@@ -13,7 +13,13 @@ python scripts\mountain_weather.py --name 燕岳 --date 2026-07-19 --days 2
 python scripts\mountain_weather.py --name 燕岳 --weekly            # 16日間の見通し
 python scripts\mountain_weather.py --name 燕岳 --compare-models    # JMA/ECMWF/GFS比較
 python scripts\mountain_weather.py --lat 36.407 --lon 137.713 --elev 2763 --label 任意地点
+python scripts\mountain_weather.py --name 燕岳 --html --open       # HTMLレポート保存+ブラウザ表示
+python scripts\mountain_weather.py --name 燕岳 --html C:\tmp\yohou.html  # 保存先指定
 ```
+
+`--html` は色分きのHTMLレポート（指数・眺望バッジ、スマホ対応、単一ファイル）を保存する。
+パス省略時はカレントディレクトリに `yohou_<山名>_<日付>.html` で自動命名。
+コンソールへのMarkdown出力は従来どおり並行して出る。
 
 - 山名は `references/mountains.csv`（百名山＋人気峰147座、国土地理院DEMで座標照合済み）
   →国土地理院/Open-Meteoジオコーディングの順で解決。同名山は候補提示→`--select N`

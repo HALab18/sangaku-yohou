@@ -12,10 +12,13 @@
 終了コード: 0=正常 / 2=山名の候補が複数(要選択) / 1=エラー
 """
 import argparse
+import contextlib
 import csv
 import datetime as dt
+import html as html_mod
+import io
 import json
-import math
+import re
 import sys
 import urllib.parse
 import urllib.request
@@ -393,6 +396,110 @@ def compare_models(lat, lon, elev, start, end):
         date += dt.timedelta(days=1)
 
 
+# ---------------------------------------------------------------- HTML出力
+HTML_CSS = """
+:root{--accent:#2d6a4f;--accent2:#b5451b;--night:#1e2d4a;--warn:#7b5e00;--bg:#f7f5f0}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:var(--bg);color:#222;
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  font-size:14px;line-height:1.6}
+main{max-width:1080px;margin:0 auto}
+h1{color:var(--accent);font-size:1.4em;border-bottom:3px solid var(--accent);
+  padding-bottom:6px;margin:0 0 12px}
+h2{color:var(--night);font-size:1.1em;margin:22px 0 8px;border-left:5px solid var(--accent);
+  padding-left:8px}
+ul.meta{margin:0 0 8px;padding-left:1.2em;color:#555;font-size:.92em}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 4px}
+table{border-collapse:collapse;white-space:nowrap;width:100%}
+th{background:var(--accent);color:#fff;padding:6px 9px;font-weight:600;font-size:.92em}
+td{padding:5px 9px;border-bottom:1px solid #e2ddd2;text-align:center;background:#fff}
+tr:nth-child(even) td{background:#f3f0e8}
+.b{display:inline-block;min-width:2.6em;padding:1px 7px;border-radius:10px;
+  font-weight:700;font-size:.92em}
+.b-a{background:#d8efe1;color:#1c5b3f}.b-b{background:#fdeec9;color:#7b5e00}
+.b-c{background:#f9d9cf;color:#a03415}
+.v-ex{color:#1c5b3f;font-weight:700}.v-ok{color:#2d6a4f}.v-so{color:#7b5e00}
+.v-ng{color:#a03415}
+.sat{color:#1857a4;font-weight:600}.sun{color:#c0392b;font-weight:600}
+.notice{background:#fff8e6;border-left:5px solid var(--warn);padding:10px 12px;
+  border-radius:0 6px 6px 0;margin:18px 0;font-size:.92em}
+footer{color:#888;font-size:.85em;margin-top:20px}
+@media(max-width:600px){body{padding:8px;font-size:13px}}
+"""
+
+
+def _decorate_cell(cell):
+    """表セル内の指数/眺望/曜日マークに色クラスを付与"""
+    c = html_mod.escape(cell)
+    for mark, cls in (("A◎", "b b-a"), ("B△", "b b-b"), ("C✕", "b b-c")):
+        if c == mark:
+            return f'<span class="{cls}">{mark}</span>'
+    m = re.match(r"^([◎○△✕])(\(.+\))?$", c)
+    if m:
+        cls = {"◎": "v-ex", "○": "v-ok", "△": "v-so", "✕": "v-ng"}[m.group(1)]
+        return f'<span class="{cls}">{c}</span>'
+    c = c.replace("(土)", '<span class="sat">(土)</span>').replace("(日)", '<span class="sun">(日)</span>')
+    return c
+
+
+def md_to_html(md, title):
+    """本スクリプトが出力するMarkdown(見出し/箇条書き/表/引用)をHTMLに変換"""
+    out, table, ul = [], [], False
+
+    def flush_table():
+        nonlocal table
+        if not table:
+            return
+        out.append('<div class="tbl"><table>')
+        for ri, row in enumerate(table):
+            cells = [c.strip() for c in row.strip().strip("|").split("|")]
+            if ri == 1 and all(set(c) <= set("-: ") for c in cells):
+                continue
+            tag = "th" if ri == 0 else "td"
+            out.append("<tr>" + "".join(
+                f"<{tag}>{_decorate_cell(c) if tag == 'td' else html_mod.escape(c)}</{tag}>"
+                for c in cells) + "</tr>")
+        out.append("</table></div>")
+        table = []
+
+    def flush_ul():
+        nonlocal ul
+        if ul:
+            out.append("</ul>")
+            ul = False
+
+    for line in md.splitlines():
+        if line.startswith("|"):
+            flush_ul()
+            table.append(line)
+            continue
+        flush_table()
+        if line.startswith("## "):
+            flush_ul()
+            out.append(f"<h1>{html_mod.escape(line[3:])}</h1>")
+        elif line.startswith("### "):
+            flush_ul()
+            out.append(f"<h2>{html_mod.escape(line[4:])}</h2>")
+        elif line.startswith("- "):
+            if not ul:
+                out.append('<ul class="meta">')
+                ul = True
+            out.append(f"<li>{html_mod.escape(line[2:])}</li>")
+        elif line.startswith("> "):
+            flush_ul()
+            out.append(f'<div class="notice">{html_mod.escape(line[2:])}</div>')
+        elif line.strip():
+            flush_ul()
+            out.append(f"<p>{html_mod.escape(line)}</p>")
+    flush_table()
+    flush_ul()
+    out.append("<footer>データ: Open-Meteo (CC BY 4.0) / sangaku-yohou</footer>")
+    return ("<!doctype html><html lang='ja'><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            f"<title>{html_mod.escape(title)}</title><style>{HTML_CSS}</style></head>"
+            "<body><main>" + "\n".join(out) + "</main></body></html>")
+
+
 # ---------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
@@ -406,6 +513,9 @@ def main():
     ap.add_argument("--days", type=int, default=3, help="詳細表示する日数 (既定3)")
     ap.add_argument("--weekly", action="store_true", help="16日間の日別見通しを表示")
     ap.add_argument("--compare-models", action="store_true", help="JMA/ECMWF/GFSモデル比較")
+    ap.add_argument("--html", nargs="?", const="AUTO", metavar="PATH",
+                    help="HTMLレポートも保存 (パス省略時はカレントに自動命名)")
+    ap.add_argument("--open", action="store_true", help="--html 保存後にブラウザで開く")
     args = ap.parse_args()
 
     if args.name:
@@ -435,28 +545,48 @@ def main():
     lo, hi, t = bracket_levels(elev)
     data = fetch_forecast(lat, lon, elev, fetch_start, fetch_end, {lo, hi})
 
-    lv = f"{lo[0]}hPa" if lo == hi else f"{lo[0]}/{hi[0]}hPa補間"
-    print(f"## {label} の山岳気象予報")
-    print(f"- 地点: 北緯{lat:.4f} 東経{lon:.4f} / 標高 {elev:.0f}m ({src})")
-    print(f"- 稜線風: {lv} の風を山頂標高に合わせて算出 / 気温は標高{elev:.0f}m面の値")
-    print(f"- 体感温度 = 気温 − 稜線風速×1 (慣用則) / 取得: {dt.datetime.now():%Y-%m-%d %H:%M} / 出典: Open-Meteo")
+    def emit():
+        lv = f"{lo[0]}hPa" if lo == hi else f"{lo[0]}/{hi[0]}hPa補間"
+        print(f"## {label} の山岳気象予報")
+        print(f"- 地点: 北緯{lat:.4f} 東経{lon:.4f} / 標高 {elev:.0f}m ({src})")
+        print(f"- 稜線風: {lv} の風を山頂標高に合わせて算出 / 気温は標高{elev:.0f}m面の値")
+        print(f"- 体感温度 = 気温 − 稜線風速×1 (慣用則) / 取得: {dt.datetime.now():%Y-%m-%d %H:%M} / 出典: Open-Meteo")
 
-    n_days = (fetch_end - fetch_start).days + 1
-    dates = [fetch_start + dt.timedelta(days=i) for i in range(n_days)]
-    rows = daily_summary_rows(data, dates, lo, hi, t, elev)
-    title = "16日間の見通し" if args.weekly else "日別サマリ"
-    print_daily_summary(rows, title)
+        n_days = (fetch_end - fetch_start).days + 1
+        dates = [fetch_start + dt.timedelta(days=i) for i in range(n_days)]
+        rows = daily_summary_rows(data, dates, lo, hi, t, elev)
+        title = "16日間の見通し" if args.weekly else "日別サマリ"
+        print_daily_summary(rows, title)
 
-    d = start
-    while d <= detail_end:
-        print_detail_day(data, d, lo, hi, t, elev)
-        d += dt.timedelta(days=1)
+        d = start
+        while d <= detail_end:
+            print_detail_day(data, d, lo, hi, t, elev)
+            d += dt.timedelta(days=1)
 
-    if args.compare_models:
-        compare_models(lat, lon, elev, start, min(detail_end, start + dt.timedelta(days=2)))
+        if args.compare_models:
+            compare_models(lat, lon, elev, start, min(detail_end, start + dt.timedelta(days=2)))
 
-    print("\n> ⚠️ 数値予報は山岳地形では誤差が大きく、局地的な突風・雷雨・視界不良は表現しきれません。"
-          "登山指数は目安です。最終判断は最新の予報と現地の状況で行ってください。")
+        print("\n> ⚠️ 数値予報は山岳地形では誤差が大きく、局地的な突風・雷雨・視界不良は表現しきれません。"
+              "登山指数は目安です。最終判断は最新の予報と現地の状況で行ってください。")
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        emit()
+    md = buf.getvalue()
+    sys.stdout.write(md)
+
+    if args.html:
+        page_title = f"{label} 山岳気象予報 {start.strftime('%m/%d')}"
+        if args.html == "AUTO":
+            safe = re.sub(r"[^\w぀-ヿ一-鿿]+", "_", label).strip("_")
+            path = Path.cwd() / f"yohou_{safe}_{start.isoformat()}.html"
+        else:
+            path = Path(args.html)
+        path.write_text(md_to_html(md, page_title), encoding="utf-8")
+        print(f"\nHTML保存: {path}")
+        if args.open:
+            import webbrowser
+            webbrowser.open(path.as_uri())
 
 
 if __name__ == "__main__":
