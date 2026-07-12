@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>sangaku-yohou — 山の天気を山頂の高さで</title>
-<meta name="description" content="山名を入れるだけで山頂・稜線の気象予報（稜線風・山頂気温・体感温度・凍結高度・雷CAPE・眺望・登山指数）を表示。データ: Open-Meteo">
+<title>PeakWeather — 山頂コンディションをもっと手軽に。</title>
+<meta name="description" content="PeakWeather: 山名を入れるだけで山頂・稜線の気象予報（稜線風・山頂気温・体感温度・凍結高度・雷CAPE・眺望・登山指数）を表示。データ: Open-Meteo">
 <style>
 :root{--accent:#2d6a4f;--accent2:#b5451b;--night:#1e2d4a;--warn:#7b5e00;--bg:#f7f5f0}
 *{box-sizing:border-box}
@@ -43,6 +43,9 @@ tr:nth-child(even) td{background:#f3f0e8}
 .b-a{background:#d8efe1;color:#1c5b3f}.b-b{background:#fdeec9;color:#7b5e00}.b-c{background:#f9d9cf;color:#a03415}
 .v-ex{color:#1c5b3f;font-weight:700}.v-ok{color:#2d6a4f}.v-so{color:#7b5e00}.v-ng{color:#a03415}
 .sat{color:#1857a4;font-weight:600}.sun{color:#c0392b;font-weight:600}
+.ew{color:#a03415;font-weight:700;font-size:.85em;white-space:nowrap}
+.ewnote{background:#f9d9cf;border-left:5px solid #a03415;padding:8px 12px;
+  border-radius:0 6px 6px 0;margin:6px 0 14px;font-size:.9em}
 .notice{background:#fff8e6;border-left:5px solid var(--warn);padding:10px 12px;
   border-radius:0 6px 6px 0;margin:18px 0;font-size:.9em}
 .gate{background:#fff8e6;border:2px solid var(--warn);border-radius:10px;padding:14px 16px;margin:12px 0}
@@ -59,7 +62,7 @@ footer a{color:var(--accent)}
 </head>
 <body><main>
 
-<h1>sangaku-yohou<small>山岳気象予報</small></h1>
+<h1>PeakWeather<small>山頂コンディションをもっと手軽に。</small></h1>
 <p class="lead">山名を入れるだけで、山頂気温・稜線風・体感温度・凍結高度・雷リスク・眺望・登山指数を表示します。
 仕組みは<a href="docs/how-it-works.html">図解ページ</a>を参照。</p>
 
@@ -144,13 +147,26 @@ function ridgeWind(h,i,lo,hi,t){
   if(sLo==null||sHi==null)return[sLo??sHi??null,dLo??dHi??null];
   return[sLo+(sHi-sLo)*t,t<0.5?dLo:dHi];
 }
-function blockIndex(ws,pr3,prob,cape){
+function seasonTh(month){
+  // 夏山(6-10月)/冬山・残雪期(11-5月)で風速・降水の閾値を切替
+  return month>=6&&month<=10
+    ?{mode:"夏山",wind:[10,15],precip:[1,5]}
+    :{mode:"冬山・残雪期",wind:[8,12],precip:[1,3]};
+}
+function blockIndex(ws,pr3,cape,th){
+  // 降水確率は判定に使わない(参考表示のみ)
   let idx="A";const worse=v=>{if(v==="C"||idx==="C")idx="C";else if(v==="B")idx="B"};
-  if(ws!=null){if(ws>=15)worse("C");else if(ws>=10)worse("B")}
-  if(pr3!=null){if(pr3>=5)worse("C");else if(pr3>=1)worse("B")}
-  if(prob!=null&&prob>=70)worse("B");
+  if(ws!=null){if(ws>=th.wind[1])worse("C");else if(ws>=th.wind[0])worse("B")}
+  if(pr3!=null){if(pr3>=th.precip[1])worse("C");else if(pr3>=th.precip[0])worse("B")}
   if(cape!=null){if(cape>=1000)worse("C");else if(cape>=500)worse("B")}
   return idx;
+}
+function feelsLike(temp,ws){
+  // 風冷指数(JAG/TI式)。風速4.8km/h未満は気温をそのまま採用
+  if(temp==null||ws==null)return temp;
+  const v=ws*3.6;
+  if(v<4.8)return temp;
+  return 13.12+0.6215*temp-11.37*v**0.16+0.3965*temp*v**0.16;
 }
 function viewScore(elev,low,mid,pr3,vis){
   const summit=elev<2000?Math.max(low??-1,mid??-1)<0?null:Math.max(low??0,mid??0):mid;
@@ -235,14 +251,18 @@ async function run(mt){
     <li>地点: 北緯${mt.lat.toFixed(4)} 東経${mt.lon.toFixed(4)} / 標高 ${Math.round(mt.elev)}m
       (${mt.geo?"地名検索: 標高はグリッド値で山頂より低いことがあります":"内蔵DB"})</li>
     <li>稜線風: ${lo[0]===hi[0]?lo[0]+"hPa":lo[0]+"/"+hi[0]+"hPa補間"} / 気温は標高${Math.round(mt.elev)}m面 /
-      体感温度 = 気温 − 稜線風速×1 (慣用則)</li></ul>`;
+      体感温度 = 風冷指数 (JAG/TI式。風速4.8km/h未満は気温をそのまま採用)</li>
+    <li>登山指数: ${seasonTh(start.getMonth()+1).mode}モード基準
+      (風 ${seasonTh(start.getMonth()+1).wind.join("/")}m/s・降水 ${seasonTh(start.getMonth()+1).precip.join("/")}mm/3h・CAPE 500/1000)。
+      夏山=6〜10月/冬山・残雪期=11〜5月を対象日の月で自動切替。降水確率は参考表示</li></ul>`;
 
   // 日別サマリ
   const rows=[];
   for(let dt2=new Date(today);dt2<=fetchEnd;dt2=addDays(dt2,1)){
     const ds=iso(dt2),di=d.time.indexOf(ds);if(di<0)continue;
     const idxs=dayIdx(times,ds);
-    const act=idxs.filter(i=>{const hr=+times[i].slice(11,13);return hr>=5&&hr<=16});
+    const th=seasonTh(dt2.getMonth()+1);
+    const act=idxs.filter(i=>{const hr=+times[i].slice(11,13);return hr>=5&&hr<=17});
     let dayIdxV="A",wsMax=null,wdMax=null;
     for(let sh=3;sh<18;sh+=3){
       const blk=act.filter(i=>Math.floor(+times[i].slice(11,13)/3)*3===sh);
@@ -251,10 +271,21 @@ async function run(mt){
       const ws=Math.max(...rw.map(x=>x[0]??-1));
       if(ws>=0&&(wsMax==null||ws>wsMax)){wsMax=ws;wdMax=rw.find(x=>x[0]===ws)?.[1]}
       const pr=blk.reduce((s,i)=>s+(h.precipitation[i]||0),0);
-      const prob=Math.max(...blk.map(i=>h.precipitation_probability?.[i]??-1));
       const cape=Math.max(...blk.map(i=>h.cape?.[i]??-1));
-      const bi=blockIndex(ws<0?null:ws,pr,prob<0?null:prob,cape<0?null:cape);
+      const bi=blockIndex(ws<0?null:ws,pr,cape<0?null:cape,th);
       if(bi==="C"||(bi==="B"&&dayIdxV==="A"))dayIdxV=bi;
+    }
+    // 日中がA/Bで夕方(17-20時)がC相当なら急変警告フラグ (日中の指数は変えない)
+    let evening=false;
+    if(dayIdxV!=="C"){
+      const eve=idxs.filter(i=>{const hr=+times[i].slice(11,13);return hr>=17&&hr<=20});
+      if(eve.length){
+        const rw=eve.map(i=>ridgeWind(h,i,lo,hi,t));
+        const wsE=Math.max(...rw.map(x=>x[0]??-1));
+        const prE=eve.reduce((s,i)=>s+(h.precipitation[i]||0),0);
+        const capeE=Math.max(...eve.map(i=>h.cape?.[i]??-1));
+        evening=blockIndex(wsE<0?null:wsE,prE,capeE<0?null:capeE,th)==="C";
+      }
     }
     // 朝の眺望 (4-8時の最良)
     const order={"◎":0,"○":1,"△":2,"✕":3};let best=null;
@@ -265,17 +296,18 @@ async function run(mt){
       if(best==null||order[v[0]]<order[best[0]])best=v;
     }
     const fls=idxs.map(i=>h.freezing_level_height?.[i]).filter(v=>v!=null);
-    rows.push({d:new Date(dt2),idx:dayIdxV,code:d.weather_code[di],
+    rows.push({d:new Date(dt2),idx:dayIdxV,eve:evening,code:d.weather_code[di],
       tmin:d.temperature_2m_min[di],tmax:d.temperature_2m_max[di],
       ws:wsMax,wd:wdMax,pr:d.precipitation_sum[di],prob:d.precipitation_probability_max[di],
       fl:fls.length?Math.min(...fls):null,view:best?vhtml(best):"-"});
   }
   htmlOut+=`<h2>${weekly?"16日間の見通し":"日別サマリ"}</h2><div class="tbl"><table>
-    <tr><th>日付</th><th>指数</th><th>天気</th><th>眺望(朝)</th><th>山頂気温</th><th>稜線風max(5-16時)</th><th>降水量</th><th>降水%</th><th>凍結高度min</th></tr>`;
-  for(const r of rows)htmlOut+=`<tr><td>${md(r.d)}${wj(r.d)}</td><td>${IDX[r.idx]}</td><td>${wcode(r.code)}</td>
+    <tr><th>日付</th><th>指数</th><th>天気</th><th>眺望(朝)</th><th>山頂気温</th><th>稜線風max(5-17時)</th><th>降水量</th><th>降水%(参考)</th><th>凍結高度min</th></tr>`;
+  for(const r of rows)htmlOut+=`<tr><td>${md(r.d)}${wj(r.d)}</td><td>${IDX[r.idx]}${r.eve?'<span class="ew"> ⚠夕方</span>':""}</td><td>${wcode(r.code)}</td>
     <td>${r.view}</td><td>${f0(r.tmin)}〜${f0(r.tmax)}℃</td><td>${wdir(r.wd)} ${f1(r.ws)}m/s</td>
     <td>${r.pr==null?"-":r.pr.toFixed(1)}mm</td><td>${f0(r.prob)}%</td><td>${f0(r.fl)}m</td></tr>`;
   htmlOut+=`</table></div>`;
+  if(rows.some(r=>r.eve))htmlOut+=`<p class="ewnote">⚠夕方: 17〜20時に天候の急変(C相当)が予想されます。日中の指数には含めていませんが、下山遅れ・テント泊・ご来光待ちの際は特に注意してください。</p>`;
 
   // 3時間ごと詳細
   for(let dt2=new Date(start);dt2<=detailEnd;dt2=addDays(dt2,1)){
@@ -301,7 +333,7 @@ async function run(mt){
       const cape=capeArr.length?Math.max(...capeArr):null;
       const visArr=blk.map(i=>h.visibility?.[i]).filter(v=>v!=null);
       const vis=visArr.length?Math.min(...visArr):null;
-      const feel=(temp==null||ws==null)?null:temp-ws;
+      const feel=feelsLike(temp,ws);
       const view=vhtml(viewScore(mt.elev,h.cloud_cover_low[i0],h.cloud_cover_mid[i0],pr,vis));
       const cl=`${f0(h.cloud_cover_low[i0])}/${f0(h.cloud_cover_mid[i0])}/${f0(h.cloud_cover_high[i0])}%`;
       const visTxt=vis==null?"-":vis>=1000?`${Math.round(vis/1000)}km`:`${Math.round(vis)}m`;

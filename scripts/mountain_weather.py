@@ -171,8 +171,16 @@ def ridge_wind(h, i, lo, hi, t):
 
 
 # ---------------------------------------------------------------- 登山指数
-def block_index(ridge_ws, precip_3h, prob, cape):
-    """3時間ブロックの登山指数 A/B/C (最悪値採用)"""
+def season_thresholds(month):
+    """予報対象日の月で夏山/冬山・残雪期の判定閾値を切り替える
+    夏山(6〜10月): 風10/15m/s・降水1/5mm / 冬山・残雪期(11〜5月): 風8/12m/s・降水1/3mm"""
+    if 6 <= month <= 10:
+        return {"mode": "夏山", "wind": (10, 15), "precip": (1, 5)}
+    return {"mode": "冬山・残雪期", "wind": (8, 12), "precip": (1, 3)}
+
+
+def block_index(ridge_ws, precip_3h, cape, th):
+    """3時間ブロックの登山指数 A/B/C (最悪値採用)。降水確率は判定に使わない(参考表示のみ)"""
     idx = "A"
 
     def worse(v):
@@ -182,24 +190,34 @@ def block_index(ridge_ws, precip_3h, prob, cape):
         elif v == "B":
             idx = "B"
 
+    w_b, w_c = th["wind"]
+    p_b, p_c = th["precip"]
     if ridge_ws is not None:
-        if ridge_ws >= 15:
+        if ridge_ws >= w_c:
             worse("C")
-        elif ridge_ws >= 10:
+        elif ridge_ws >= w_b:
             worse("B")
     if precip_3h is not None:
-        if precip_3h >= 5:
+        if precip_3h >= p_c:
             worse("C")
-        elif precip_3h >= 1:
+        elif precip_3h >= p_b:
             worse("B")
-    if prob is not None and prob >= 70:
-        worse("B")
     if cape is not None:
         if cape >= 1000:
             worse("C")
         elif cape >= 500:
             worse("B")
     return idx
+
+
+def feels_like(temp, ridge_ws):
+    """体感温度: 風冷指数(JAG/TI式)。風速4.8km/h未満では気温をそのまま採用"""
+    if temp is None or ridge_ws is None:
+        return temp
+    v = ridge_ws * 3.6
+    if v < 4.8:
+        return temp
+    return 13.12 + 0.6215 * temp - 11.37 * v ** 0.16 + 0.3965 * temp * v ** 0.16
 
 
 IDX_MARK = {"A": "A◎", "B": "B△", "C": "C✕"}
@@ -290,7 +308,7 @@ def print_detail_day(data, date, lo, hi, t, elev):
                     if h["precipitation_probability"][i] is not None), default=None)
         cape = max((h["cape"][i] for i in block if h["cape"][i] is not None), default=None)
         fl = h["freezing_level_height"][i0]
-        feel = None if (temp is None or ws is None) else temp - ws  # 慣用則: 風速1m/sで-1℃
+        feel = feels_like(temp, ws)
         cl = f'{fnum(h["cloud_cover_low"][i0])}/{fnum(h["cloud_cover_mid"][i0])}/{fnum(h["cloud_cover_high"][i0])}%'
         vis_all = h.get("visibility") or []
         vis = min((vis_all[i] for i in block if i < len(vis_all) and vis_all[i] is not None), default=None)
@@ -334,8 +352,9 @@ def daily_summary_rows(data, dates, lo, hi, t, elev):
         except ValueError:
             continue
         idxs = day_indices(times, date)
-        # 行動時間帯 5-16時で指数判定
-        act = [i for i in idxs if 5 <= int(times[i][11:13]) <= 16]
+        th = season_thresholds(date.month)
+        # 行動時間帯 5-17時で指数判定
+        act = [i for i in idxs if 5 <= int(times[i][11:13]) <= 17]
         day_idx = "A"
         ws_max, wd_max = None, None
         for start_h in range(3, 18, 3):
@@ -348,15 +367,22 @@ def daily_summary_rows(data, dates, lo, hi, t, elev):
                 ws_max = ws
                 wd_max = next((dd for s, dd in rws if s == ws), None)
             pr = sum(h["precipitation"][i] or 0 for i in block)
-            prob = max((h["precipitation_probability"][i] for i in block
-                        if h["precipitation_probability"][i] is not None), default=None)
             cape = max((h["cape"][i] for i in block if h["cape"][i] is not None), default=None)
-            bi = block_index(ws, pr, prob, cape)
+            bi = block_index(ws, pr, cape, th)
             if bi == "C" or (bi == "B" and day_idx == "A"):
                 day_idx = bi
+        # 日中がA/Bで夕方(17-20時)がC相当なら急変警告フラグ (日中の指数は変えない)
+        eve = [i for i in idxs if 17 <= int(times[i][11:13]) <= 20]
+        evening = False
+        if eve and day_idx != "C":
+            rws = [ridge_wind(h, i, lo, hi, t) for i in eve]
+            ws_e = max((s for s, _ in rws if s is not None), default=None)
+            pr_e = sum(h["precipitation"][i] or 0 for i in eve)
+            cape_e = max((h["cape"][i] for i in eve if h["cape"][i] is not None), default=None)
+            evening = block_index(ws_e, pr_e, cape_e, th) == "C"
         fls = [h["freezing_level_height"][i] for i in idxs if h["freezing_level_height"][i] is not None]
         rows.append({
-            "date": date, "idx": day_idx, "code": d["weather_code"][di],
+            "date": date, "idx": day_idx, "evening": evening, "code": d["weather_code"][di],
             "tmin": d["temperature_2m_min"][di], "tmax": d["temperature_2m_max"][di],
             "ws": ws_max, "wd": wd_max,
             "pr": d["precipitation_sum"][di], "prob": d["precipitation_probability_max"][di],
@@ -368,14 +394,18 @@ def daily_summary_rows(data, dates, lo, hi, t, elev):
 
 def print_daily_summary(rows, title):
     print(f"\n### {title}")
-    print("| 日付 | 指数 | 天気 | 眺望(朝) | 山頂気温 | 稜線風max(5-16時) | 降水量 | 降水% | 凍結高度min |")
+    print("| 日付 | 指数 | 天気 | 眺望(朝) | 山頂気温 | 稜線風max(5-17時) | 降水量 | 降水%(参考) | 凍結高度min |")
     print("|---|---|---|---|---|---|---|---|---|")
     for r in rows:
         wj = "月火水木金土日"[r["date"].weekday()]
-        print(f"| {r['date'].strftime('%m/%d')}({wj}) | {IDX_MARK[r['idx']]} | {wcode(r['code'])} "
+        mark = IDX_MARK[r["idx"]] + (" ⚠夕方" if r.get("evening") else "")
+        print(f"| {r['date'].strftime('%m/%d')}({wj}) | {mark} | {wcode(r['code'])} "
               f"| {r['view']} | {fnum(r['tmin'], '{:.0f}')}〜{fnum(r['tmax'], '{:.0f}')}℃ "
               f"| {wdir(r['wd'])} {fnum(r['ws'], '{:.1f}')}m/s "
               f"| {fnum(r['pr'], '{:.1f}')}mm | {fnum(r['prob'])}% | {fnum(r['fl'])}m |")
+    if any(r.get("evening") for r in rows):
+        print("- ⚠夕方: 17〜20時に天候の急変(C相当)が予想されます。日中の指数には含めていませんが、"
+              "下山遅れ・テント泊・ご来光待ちの際は特に注意してください。")
 
 
 def compare_models(lat, lon, elev, start, end):
@@ -449,8 +479,9 @@ def _decorate_cell(cell):
     """表セル内の指数/眺望/曜日マークに色クラスを付与"""
     c = html_mod.escape(cell)
     for mark, cls in (("A◎", "b b-a"), ("B△", "b b-b"), ("C✕", "b b-c")):
-        if c == mark:
-            return f'<span class="{cls}">{mark}</span>'
+        if c.startswith(mark):
+            rest = c[len(mark):]
+            return f'<span class="{cls}">{mark}</span>{rest}'
     m = re.match(r"^([◎○△✕])(\(.+\))?$", c)
     if m:
         cls = {"◎": "v-ex", "○": "v-ok", "△": "v-so", "✕": "v-ng"}[m.group(1)]
@@ -510,7 +541,7 @@ def md_to_html(md, title):
             out.append(f"<p>{html_mod.escape(line)}</p>")
     flush_table()
     flush_ul()
-    out.append("<footer>データ: Open-Meteo (CC BY 4.0) / sangaku-yohou</footer>")
+    out.append("<footer>データ: Open-Meteo (CC BY 4.0) / PeakWeather</footer>")
     return ("<!doctype html><html lang='ja'><head><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             f"<title>{html_mod.escape(title)}</title><style>{HTML_CSS}</style></head>"
@@ -567,7 +598,12 @@ def main():
         print(f"## {label} の山岳気象予報")
         print(f"- 地点: 北緯{lat:.4f} 東経{lon:.4f} / 標高 {elev:.0f}m ({src})")
         print(f"- 稜線風: {lv} の風を山頂標高に合わせて算出 / 気温は標高{elev:.0f}m面の値")
-        print(f"- 体感温度 = 気温 − 稜線風速×1 (慣用則) / 取得: {dt.datetime.now():%Y-%m-%d %H:%M} / 出典: Open-Meteo")
+        th0 = season_thresholds(start.month)
+        print(f"- 登山指数: {th0['mode']}モード基準 (風 {th0['wind'][0]}/{th0['wind'][1]}m/s・"
+              f"降水 {th0['precip'][0]}/{th0['precip'][1]}mm/3h・CAPE 500/1000)。"
+              f"夏山=6〜10月/冬山・残雪期=11〜5月を対象日の月で自動切替。降水確率は参考表示")
+        print(f"- 体感温度 = 風冷指数 (JAG/TI式。風速4.8km/h未満は気温をそのまま採用) "
+              f"/ 取得: {dt.datetime.now():%Y-%m-%d %H:%M} / 出典: Open-Meteo")
 
         n_days = (fetch_end - fetch_start).days + 1
         dates = [fetch_start + dt.timedelta(days=i) for i in range(n_days)]

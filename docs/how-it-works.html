@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>sangaku-yohou の仕組み — 山岳予報ツール解説</title>
+<title>PeakWeather の仕組み — 山岳予報ツール解説</title>
 <style>
 :root{--accent:#2d6a4f;--accent2:#b5451b;--night:#1e2d4a;--warn:#7b5e00;--bg:#f7f5f0}
 *{box-sizing:border-box}
@@ -40,7 +40,7 @@ footer{color:#888;font-size:.85em;margin-top:36px;border-top:1px solid #ddd;padd
 </head>
 <body><main>
 
-<h1>山岳予報ツール「sangaku-yohou」の仕組み
+<h1>山岳予報ツール「PeakWeather」の仕組み
 <small>どうやって山の天気を調べ、どう判定しているのかの解説</small></h1>
 
 <p>このツールは、<b>「山の名前」を入れると「その山の山頂・稜線の天気予報」を表にして返す</b>プログラムです。
@@ -134,26 +134,43 @@ footer{color:#888;font-size:.85em;margin-top:36px;border-top:1px solid #ddd;padd
 <h2>4. 判定基準①: 登山指数 A/B/C</h2>
 <p>1日を3時間ごとのブロックに割り、各ブロックを下の表で採点します。
 複数の項目に引っかかる場合は<b>いちばん悪い評価を採用</b>（安全側に倒す）。
-日単位の指数は、行動時間帯（5〜16時）の中の最悪値です。</p>
+日単位の指数は、行動時間帯（5〜17時）の中の最悪値です。
+風速・降水の基準は<b>予報対象日の月</b>で夏山と冬山・残雪期を自動で切り替えます。</p>
 
+<p><b>夏山モード（6月〜10月）</b></p>
 <div class="tbl"><table>
 <tr><th>項目</th><th><span class="b b-a">A◎</span> 登山適</th><th><span class="b b-b">B△</span> 要注意</th><th><span class="b b-c">C✕</span> 不適</th></tr>
 <tr><td>稜線風速</td><td>10m/s未満</td><td>10〜15m/s</td><td>15m/s以上</td></tr>
 <tr><td>降水量(3時間)</td><td>1mm未満</td><td>1〜5mm</td><td>5mm以上</td></tr>
-<tr><td>降水確率</td><td>70%未満</td><td>70%以上</td><td>—</td></tr>
 <tr><td>雷エネルギー(CAPE)</td><td>500未満</td><td>500〜1000</td><td>1000以上</td></tr>
 </table></div>
+
+<p><b>冬山・残雪期モード（11月〜5月）</b></p>
+<div class="tbl"><table>
+<tr><th>項目</th><th><span class="b b-a">A◎</span> 登山適</th><th><span class="b b-b">B△</span> 要注意</th><th><span class="b b-c">C✕</span> 不適</th></tr>
+<tr><td>稜線風速</td><td>8m/s未満</td><td>8〜12m/s</td><td>12m/s以上</td></tr>
+<tr><td>降水量(3時間)</td><td>1mm未満</td><td>1〜3mm</td><td>3mm以上（降雪リスク）</td></tr>
+<tr><td>雷エネルギー(CAPE)</td><td>500未満</td><td>500〜1000</td><td>1000以上</td></tr>
+</table></div>
+
+<p>降水確率は表に参考として表示しますが、<b>判定には使いません</b>
+（判定に使うのは実測ベースの降水量です）。</p>
 
 <p><b>CAPE（ケープ）</b>は「大気にたまった雷雨の燃料」を表す気象指標です（単位 J/kg）。
 値が大きいほど積乱雲が発達しやすく、夏山の午後の雷雨リスクの先読みに使えます。
 風速15m/sは「歩行がふらつき、耐風姿勢が必要になり始める」レベルで、
-一般的な山岳気象の目安と同じ線を採用しています。</p>
+一般的な山岳気象の目安と同じ線を採用しています。冬は同じ風速でも低体温リスクが
+段違いに上がるため、閾値を8/12m/sに引き下げています。</p>
+
+<div class="point">⚠ <b>夕方急変の警告</b>: 行動時間帯の外である17〜20時がC相当と予想される日は、
+日中の指数は変えずに「⚠夕方」の警告マークを付けます。下山が遅れたときやテント泊のときは
+この印が付いた日の夕方以降に注意してください。</div>
 
 <h2>5. 判定基準②: 体感温度</h2>
-<p>登山の世界で昔から使われる慣用則
-<b>「風速1m/sごとに体感温度は約1℃下がる」</b>で計算しています。</p>
-<div class="point">体感温度 ＝ 山頂気温 − 稜線風速<br>
-例: 気温16℃・風14m/s → 体感2℃。夏でも稜線では防寒着が要る、が数字で見えます。
+<p>風の強さで体から奪われる熱を表す<b>風冷指数（Wind Chill Index, JAG/TI式）</b>で計算しています。</p>
+<div class="point">体感温度 ＝ 13.12 + 0.6215×気温 − 11.37×風速(km/h)<sup>0.16</sup> + 0.3965×気温×風速(km/h)<sup>0.16</sup><br>
+（風速4.8km/h未満のときは気温をそのまま表示）<br>
+例: 気温0℃・風14m/s → 体感約−8℃。夏でも稜線では防寒着が要る、が数字で見えます。
 雨や汗で濡れるとさらに下がるため、表の値は「良くてこれくらい」と読んでください。</div>
 
 <h2>6. 判定基準③: 眺望 ◎○△✕</h2>
@@ -229,7 +246,7 @@ footer{color:#888;font-size:.85em;margin-top:36px;border-top:1px solid #ddd;padd
 ④ 数字はぜんぶ決まったルールの計算。AIはその読み解きだけを担当する
 </div>
 
-<footer>sangaku-yohou — データ: Open-Meteo (CC BY 4.0) / 山岳座標: 国土地理院地名検索・標高API による照合 / 2026-07</footer>
+<footer>PeakWeather — データ: Open-Meteo (CC BY 4.0) / 山岳座標: 国土地理院地名検索・標高API による照合 / 2026-07</footer>
 
 </main></body>
 </html>
