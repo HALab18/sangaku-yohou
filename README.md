@@ -1,55 +1,127 @@
-# sangaku-yohou — 山岳地点予報ツール
+# sangaku-yohou — 山の上の天気を、山頂の高さで調べるツール
 
-特定の山の山頂・稜線の数値予報（稜線風・気温・体感温度・凍結高度・降水・雷CAPE・
-眺望指数・登山指数・週間見通し）を Open-Meteo API から取得して Markdown 表で出力する。
+山の名前を入れるだけで、**山頂・稜線の気象予報**（稜線の風・山頂気温・体感温度・凍結高度・
+降水・雷リスク・眺望の見込み・登山指数）を表にして返すコマンドラインツールです。
 
-依存: Python 3 標準ライブラリのみ / APIキー不要（Open-Meteo・国土地理院API）
+```
+python scripts/mountain_weather.py --name 燕岳
+```
+
+```
+### 日別サマリ
+| 日付 | 指数 | 天気 | 眺望(朝) | 山頂気温 | 稜線風max(5-16時) | 降水量 | 降水% | 凍結高度min |
+|---|---|---|---|---|---|---|---|---|
+| 07/18(土) | B△ | 霧雨(弱) | ◎ | 11〜18℃ | 南西 2.2m/s | 0.6mm | 97% | 5210m |
+| 07/19(日) | B△ | 霧雨(弱) | ◎ | 11〜18℃ | 南 4.2m/s | 1.8mm | 83% | 5190m |
+```
+
+## 特徴
+
+- **山頂の高さの予報**: 麓の天気予報ではなく、山頂標高を指定して気温・風を取得
+- **稜線風**: 地上10m風ではなく、上空の気圧面（850/800/700hPa等）の風を山頂標高で補間。
+  「麓は風速2mでも稜線は15m」がちゃんと数字で出ます
+- **登山指数 A◎/B△/C✕**: 風・降水・雷（CAPE）の複合判定、安全側（最悪値）採用
+- **眺望 ◎/○/△/✕**: 雲の高さと山頂の高さを見比べて判定。雲海チャンスも検出
+- **内蔵山岳DB 147座**: 百名山＋人気峰。国土地理院の地名検索・標高データで座標を照合済み。
+  DBにない山も地名検索で自動解決、緯度経度の直接指定も可
+- **16日先までの見通し** と **気象庁/ECMWF/GFS の3モデル比較**（予報の信頼度確認）
+- **HTMLレポート出力**: 色分きの単一HTMLで保存、スマホでもそのまま見られる
+- **依存ゼロ**: Python 3 標準ライブラリのみ。APIキー・アカウント登録不要
+
+仕組みの詳しい解説（図解入り・非エンジニア向け）: [docs/how-it-works.html](docs/how-it-works.html) をブラウザで開いてください。
+
+## 必要なもの
+
+- Python 3.8 以降（追加パッケージ不要）
+- インターネット接続（Open-Meteo / 国土地理院APIへのHTTPSアクセス）
+
+## インストール
+
+```
+git clone https://github.com/HALab18/sangaku-yohou.git
+cd sangaku-yohou
+python scripts/mountain_weather.py --name 富士山
+```
+
+gitがない場合は GitHub の「Code → Download ZIP」で展開しても同じです。
+`scripts/` と `references/` は同じフォルダ直下に置いたまま使ってください（スクリプトが相対参照）。
 
 ## 使い方
 
 ```
-python scripts\mountain_weather.py --name 燕岳
-python scripts\mountain_weather.py --name 燕岳 --date 2026-07-19 --days 2
-python scripts\mountain_weather.py --name 燕岳 --weekly            # 16日間の見通し
-python scripts\mountain_weather.py --name 燕岳 --compare-models    # JMA/ECMWF/GFS比較
-python scripts\mountain_weather.py --lat 36.407 --lon 137.713 --elev 2763 --label 任意地点
-python scripts\mountain_weather.py --name 燕岳 --html --open       # HTMLレポート保存+ブラウザ表示
-python scripts\mountain_weather.py --name 燕岳 --html C:\tmp\yohou.html  # 保存先指定
+# 基本: 今日から3日分の詳細 + 週間サマリ
+python scripts/mountain_weather.py --name 燕岳
+
+# 日付を指定（例: 週末2日分）
+python scripts/mountain_weather.py --name 天狗岳 --date 2026-07-18 --days 2
+
+# 16日間の見通し（「来週登れそうな日は?」）
+python scripts/mountain_weather.py --name 谷川岳 --weekly
+
+# 3つの気象モデルを並べて予報の確度を確認
+python scripts/mountain_weather.py --name 富士山 --compare-models
+
+# HTMLレポートを保存してブラウザで開く
+python scripts/mountain_weather.py --name 燕岳 --html --open
+
+# DBにない山・任意の地点（--elev は山頂標高）
+python scripts/mountain_weather.py --lat 36.407 --lon 137.713 --elev 2763 --label 燕岳
 ```
 
-`--html` は色分きのHTMLレポート（指数・眺望バッジ、スマホ対応、単一ファイル）を保存する。
-パス省略時はカレントディレクトリに `yohou_<山名>_<日付>.html` で自動命名。
-コンソールへのMarkdown出力は従来どおり並行して出る。
+| オプション | 意味 |
+|---|---|
+| `--name 山名` | 山名で指定（内蔵DB→地名検索の順で解決） |
+| `--select N` | 同名の山が複数あるとき候補一覧から番号で選択 |
+| `--date YYYY-MM-DD` | 対象日（省略時は今日から） |
+| `--days N` | 詳細表示する日数（既定3） |
+| `--weekly` | 16日間の日別見通し |
+| `--compare-models` | 気象庁JMA / 欧州ECMWF / 米国GFS の比較表 |
+| `--html [PATH]` | HTMLレポート保存（PATH省略時は自動命名） |
+| `--open` | 保存したHTMLをブラウザで開く |
+| `--lat --lon --elev --label` | 座標で直接指定 |
 
-- 山名は `references/mountains.csv`（百名山＋人気峰147座、国土地理院DEMで座標照合済み）
-  →国土地理院/Open-Meteoジオコーディングの順で解決。同名山は候補提示→`--select N`
-- 終了コード: 0=正常 / 2=候補複数 / 1=エラー
+同名の山（例: 「大山」= 鳥取／丹沢）は候補が表示されるので `--select 1` のように選び直してください。
 
-## ファイル構成
+## 出力の読み方
 
-```
-scripts/mountain_weather.py   本体（scripts/ と references/ は同じ親直下に置くこと）
-references/mountains.csv      内蔵山岳DB (name,yomi,pref,lat,lon,elev)
-references/criteria.md        登山指数A/B/C・眺望指数◎○△✕の判定基準
-skill/SKILL.md                Claude Code スキル定義のテンプレート
-docs/how-it-works.html        仕組み解説ページ（図解入り・人に説明する用）
-```
-
-仕組み・判定基準を人に説明するときは `docs/how-it-works.html` をブラウザで開く
-（単一ファイルなのでそのまま共有可）。
-
-## 別PCでのセットアップ
-
-1. このリポジトリをクローン
-2. Python 3 が入っていることを確認（`python --version`。追加パッケージ不要）
-3. 動作確認: `python scripts\mountain_weather.py --name 燕岳`
-   - 社内プロキシ環境では `HTTPS_PROXY` の設定が必要な場合あり
-   - SSL検査型セキュリティ製品下では証明書エラーが出ることがある
+- **登山指数**: A◎=登山適 / B△=要注意（経験者向き・行程短縮検討） / C✕=不適。
+  稜線風10/15m/s、3時間降水1/5mm、雷CAPE 500/1000 J/kg が境目。詳細は
+  [references/criteria.md](references/criteria.md)
+- **体感温度**: 「風速1m/sで体感−1℃」の登山慣用則。濡れるとさらに下がります
+- **眺望(朝)**: 4〜8時の最良値。ご来光・朝焼けの目安。「◎(雲海)」は雲海チャンス
+- **凍結高度**: 0℃になる高さ。山頂標高より低いと稜線は雪・着氷の世界
+- **雷CAPE**: 雷雨の燃料の量。夏山では午後に上がる日は「早出早着・13時までに樹林帯へ」
 
 ## Claude Code スキル連携（任意）
 
-「〇〇岳の予報を調べて」でClaude Codeから自動起動させたい場合:
+[Claude Code](https://claude.com/claude-code) を使っている場合、「◯◯岳の予報を調べて」と
+話しかけるだけでこのツールが自動実行され、AIが表の読み解き付きで答えるようにできます。
 
 1. `skill/SKILL.md` を `~/.claude/skills/sangaku-yohou/SKILL.md` にコピー
    （Windows: `C:\Users\<ユーザー名>\.claude\skills\sangaku-yohou\SKILL.md`）
-2. コピー先ファイル内の `{{REPO_PATH}}` をクローン先の絶対パス（例: `D:\dev\lab6`）に一括置換
+2. コピーしたファイル内の `{{REPO_PATH}}` をクローン先の絶対パス（例: `D:\dev\sangaku-yohou`）に一括置換
+
+数値の取得・計算はすべて本スクリプト（決定的なコード）が行い、AIは解説だけを担当します。
+
+## トラブルシューティング
+
+- **証明書エラー（CERTIFICATE_VERIFY_FAILED）**: SSL検査を行う社内ネットワークで発生します。
+  ネットワーク管理者に確認するか、自宅回線で実行してください
+- **プロキシ環境**: 環境変数 `HTTPS_PROXY` を設定してください
+- **文字化け**: 出力はUTF-8です。Windowsのコマンドプロンプトでは `chcp 65001` を実行するか、
+  PowerShell 7 / Windows Terminal の利用を推奨
+
+## データ出典・利用条件
+
+- 気象データ: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0)。無料APIは**非商用利用向け**です。
+  商用利用する場合は Open-Meteo の有料プランを契約してください
+- 山岳座標の照合: 国土地理院 地名検索API・標高API（出典: 国土地理院）
+- 本ツールのライセンス: [MIT License](LICENSE)
+
+## 免責
+
+本ツールの出力は数値予報に基づく**参考情報**であり、登山の安全を保証するものではありません。
+山岳地形では予報誤差が大きく、局地的な突風・雷・視界不良は表現できません。
+登山指数・眺望は独自の目安です。**最終判断は必ず最新の公式予報
+（[気象庁](https://www.jma.go.jp/)・[ヤマテン](https://i.yamatenki.co.jp/)等）と
+現地の状況に基づいて自己責任で行ってください。**
