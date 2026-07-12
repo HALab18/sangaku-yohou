@@ -23,6 +23,14 @@ label{display:flex;flex-direction:column;font-size:.85em;color:#555;gap:2px}
 input,select{font-size:15px;padding:7px 9px;border:1px solid #ccc;border-radius:6px;background:#fff}
 input#mname{width:13em}
 .chk{flex-direction:row;align-items:center;gap:5px;padding-bottom:8px}
+.mfield{position:relative}
+#sugg{position:absolute;top:100%;left:0;z-index:20;min-width:100%;width:max-content;max-width:80vw;
+  max-height:280px;overflow-y:auto;background:#fff;border:1px solid #ccc;border-radius:8px;
+  box-shadow:0 6px 18px rgba(0,0,0,.18);margin-top:4px}
+#sugg div{display:flex;justify-content:space-between;gap:14px;padding:9px 12px;cursor:pointer;
+  font-size:14px;color:#222}
+#sugg div:hover{background:#d8efe1}
+#sugg small{color:#888;white-space:nowrap}
 button{font-size:15px;padding:8px 22px;border:0;border-radius:6px;background:var(--accent);
   color:#fff;font-weight:700;cursor:pointer}
 button:hover{background:#245a42}
@@ -78,9 +86,9 @@ footer a{color:var(--accent)}
 
 <div id="appwrap">
 <form id="f">
-  <label>山名
-    <input id="mname" list="mtlist" placeholder="例: 燕岳" required autocomplete="off">
-    <datalist id="mtlist"></datalist>
+  <label class="mfield">山名
+    <input id="mname" placeholder="例: 燕岳" required autocomplete="off">
+    <div id="sugg" hidden></div>
   </label>
   <label>開始日
     <input type="date" id="mdate">
@@ -457,10 +465,31 @@ function applyHash(){
   });
 }
 
-// 初期化: datalist・日付範囲・URLハッシュ復元
+// 山名サジェスト (datalistはスマホの多くのブラウザで候補が出ないため独自実装)
 {
-  const dl=document.getElementById("mtlist");
-  for(const m of MOUNTAINS){const o=document.createElement("option");o.value=m[0];o.label=`${m[2]} ${m[5]}m`;dl.appendChild(o)}
+  const inp=document.getElementById("mname"),sugg=document.getElementById("sugg");
+  function render(list){
+    if(!list.length){sugg.hidden=true;sugg.innerHTML="";return}
+    sugg.innerHTML=list.slice(0,147).map(m=>
+      `<div data-n="${esc(m[0])}"><span>${esc(m[0])}</span><small>${esc(m[2])} ${m[5]}m</small></div>`).join("");
+    sugg.hidden=false;sugg.scrollTop=0;
+  }
+  function update(){
+    const q=inp.value.trim();
+    render(q?MOUNTAINS.filter(m=>m[0].includes(q)||m[1].includes(q)):MOUNTAINS);
+  }
+  inp.addEventListener("input",update);
+  inp.addEventListener("focus",update);
+  inp.addEventListener("blur",()=>setTimeout(()=>{sugg.hidden=true},150));
+  sugg.addEventListener("pointerdown",e=>{
+    const d=e.target.closest("div[data-n]");if(!d)return;
+    e.preventDefault();
+    inp.value=d.dataset.n;sugg.hidden=true;sugg.innerHTML="";
+  });
+}
+
+// 初期化: 日付範囲・URLハッシュ復元
+{
   const today=new Date(),di=document.getElementById("mdate");
   di.value=iso(today);di.min=iso(today);di.max=iso(addDays(today,15));
   if(localStorage.getItem(AGREE_KEY)==="1")applyHash();
