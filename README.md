@@ -32,7 +32,11 @@ scripts/mountain_weather.py   本体（scripts/ と references/ は同じ親直�
 references/mountains.csv      内蔵山岳DB (name,yomi,pref,lat,lon,elev)
 references/criteria.md        登山指数A/B/C・眺望指数◎○△✕の判定基準
 skill/SKILL.md                Claude Code スキル定義のテンプレート
+docs/how-it-works.html        仕組み解説ページ（図解入り・人に説明する用）
 ```
+
+仕組み・判定基準を人に説明するときは `docs/how-it-works.html` をブラウザで開く
+（単一ファイルなのでそのまま共有可）。
 
 ## 別PCでのセットアップ
 
