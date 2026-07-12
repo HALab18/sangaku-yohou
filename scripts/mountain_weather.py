@@ -20,6 +20,8 @@ import io
 import json
 import re
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -63,14 +65,29 @@ def wcode(code):
     return WMO_CODES.get(int(code), f"code{int(code)}")
 
 
-def http_json(url, params):
+def http_json(url, params, retries=3):
+    """一時的な通信エラー(接続断・SSLハンドシェイクタイムアウト・5xx等)は指数バックオフで再試行する"""
     q = urllib.parse.urlencode(params, safe=",")
     req = urllib.request.Request(f"{url}?{q}", headers={"User-Agent": "sangaku-yohou-skill"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return json.loads(r.read().decode("utf-8"))
-    except Exception as e:
-        sys.exit(f"ERROR: API呼び出しに失敗しました ({url}): {e}")
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            last_err = e
+            if e.code < 500 or attempt == retries:
+                sys.exit(f"ERROR: API呼び出しに失敗しました ({url}): HTTP {e.code} {e.reason}")
+        except Exception as e:
+            last_err = e
+            if attempt == retries:
+                break
+        wait = 1.5 * attempt
+        print(f"通信エラーのため再試行します ({attempt}/{retries}, {wait:.0f}秒後): {last_err}",
+              file=sys.stderr)
+        time.sleep(wait)
+    sys.exit(f"ERROR: API呼び出しに{retries}回失敗しました ({url}): {last_err}\n"
+             f"ネットワーク接続、プロキシ設定、セキュリティソフトのSSL検査機能を確認してください。")
 
 
 # ---------------------------------------------------------------- 山名解決
