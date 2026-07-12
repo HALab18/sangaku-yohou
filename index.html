@@ -314,8 +314,9 @@ async function run(mt){
     const ds=iso(dt2),idxs=dayIdx(times,ds);if(!idxs.length)continue;
     const di=d.time.indexOf(ds);
     const sun=di>=0&&d.sunrise?.[di]?` (日の出${d.sunrise[di].slice(11,16)} / 日の入${d.sunset[di].slice(11,16)})`:"";
+    const thD=seasonTh(dt2.getMonth()+1);
     htmlOut+=`<h2>${ds} ${wj(dt2)} 3時間ごと詳細${sun}</h2><div class="tbl"><table>
-      <tr><th>時刻</th><th>天気</th><th>眺望</th><th>気温</th><th>体感</th><th>稜線風</th><th>突風</th><th>降水</th><th>降水%</th><th>雷CAPE</th><th>雲(下/中/上)</th><th>視程</th><th>凍結高度</th></tr>`;
+      <tr><th>時刻</th><th>指数</th><th>天気</th><th>眺望</th><th>気温</th><th>体感</th><th>稜線風</th><th>突風</th><th>降水</th><th>降水%(参考)</th><th>雷CAPE</th><th>雲(下/中/上)</th><th>視程</th><th>凍結高度</th></tr>`;
     for(let sh=0;sh<24;sh+=3){
       const blk=idxs.filter(i=>Math.floor(+times[i].slice(11,13)/3)*3===sh);
       if(!blk.length)continue;
@@ -337,7 +338,8 @@ async function run(mt){
       const view=vhtml(viewScore(mt.elev,h.cloud_cover_low[i0],h.cloud_cover_mid[i0],pr,vis));
       const cl=`${f0(h.cloud_cover_low[i0])}/${f0(h.cloud_cover_mid[i0])}/${f0(h.cloud_cover_high[i0])}%`;
       const visTxt=vis==null?"-":vis>=1000?`${Math.round(vis/1000)}km`:`${Math.round(vis)}m`;
-      htmlOut+=`<tr><td>${String(sh).padStart(2,"0")}時</td><td>${wcode(h.weather_code[i0])}</td><td>${view}</td>
+      const bi=blockIndex(ws,pr,cape,thD);
+      htmlOut+=`<tr><td>${String(sh).padStart(2,"0")}時</td><td>${IDX[bi]}</td><td>${wcode(h.weather_code[i0])}</td><td>${view}</td>
         <td>${temp==null?"-":temp.toFixed(1)}℃</td><td>${f0(feel)}℃</td><td>${wdir(wd2)} ${f1(ws)}m/s</td>
         <td>${f0(gust)}m/s</td><td>${pr.toFixed(1)}mm</td><td>${f0(prob)}%</td><td>${f0(cape)}</td>
         <td>${cl}</td><td>${visTxt}</td><td>${f0(h.freezing_level_height?.[i0])}m</td></tr>`;

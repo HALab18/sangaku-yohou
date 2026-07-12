@@ -290,9 +290,10 @@ def print_detail_day(data, date, lo, hi, t, elev):
             suntxt = f" (日の出{d['sunrise'][di][11:16]} / 日の入{d['sunset'][di][11:16]})"
     except (ValueError, KeyError):
         pass
+    th = season_thresholds(date.month)
     print(f"\n### {date.isoformat()} ({'月火水木金土日'[date.weekday()]}) 3時間ごと詳細{suntxt}")
-    print("| 時刻 | 天気 | 眺望 | 気温 | 体感 | 稜線風 | 突風 | 降水 | 降水% | 雷CAPE | 雲(下/中/上) | 視程 | 凍結高度 |")
-    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    print("| 時刻 | 指数 | 天気 | 眺望 | 気温 | 体感 | 稜線風 | 突風 | 降水 | 降水%(参考) | 雷CAPE | 雲(下/中/上) | 視程 | 凍結高度 |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for start_h in range(0, 24, 3):
         block = [i for i in idxs if int(times[i][11:13]) // 3 * 3 == start_h]
         if not block:
@@ -316,7 +317,8 @@ def print_detail_day(data, date, lo, hi, t, elev):
                               h["cloud_cover_high"][i0], pr, vis)
         vw_txt = vw + (f"({note})" if note else "")
         vis_txt = "-" if vis is None else (f"{vis / 1000:.0f}km" if vis >= 1000 else f"{vis:.0f}m")
-        print(f"| {start_h:02d}時 | {wcode(h['weather_code'][i0])} | {vw_txt} | {fnum(temp, '{:.1f}')}℃ "
+        bi = block_index(ws, pr, cape, th)
+        print(f"| {start_h:02d}時 | {IDX_MARK[bi]} | {wcode(h['weather_code'][i0])} | {vw_txt} | {fnum(temp, '{:.1f}')}℃ "
               f"| {fnum(feel, '{:.0f}')}℃ | {wdir(wd)} {fnum(ws, '{:.1f}')}m/s | {fnum(gust, '{:.0f}')}m/s "
               f"| {pr:.1f}mm | {fnum(prob)}% | {fnum(cape)} | {cl} | {vis_txt} | {fnum(fl)}m |")
 
