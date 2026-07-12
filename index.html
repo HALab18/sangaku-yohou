@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>sangaku-yohou — 山の天気を山頂の高さで</title>
+<meta name="description" content="山名を入れるだけで山頂・稜線の気象予報（稜線風・山頂気温・体感温度・凍結高度・雷CAPE・眺望・登山指数）を表示。データ: Open-Meteo">
+<style>
+:root{--accent:#2d6a4f;--accent2:#b5451b;--night:#1e2d4a;--warn:#7b5e00;--bg:#f7f5f0}
+*{box-sizing:border-box}
+body{margin:0;padding:14px;background:var(--bg);color:#222;
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  font-size:14px;line-height:1.6}
+main{max-width:1080px;margin:0 auto}
+h1{color:var(--accent);font-size:1.35em;border-bottom:3px solid var(--accent);
+  padding-bottom:6px;margin:0 0 4px}
+h1 small{font-size:.62em;color:#777;font-weight:400;margin-left:8px}
+h2{color:var(--night);font-size:1.08em;margin:20px 0 8px;border-left:5px solid var(--accent);padding-left:8px}
+.lead{color:#666;font-size:.92em;margin:4px 0 14px}
+form{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08);
+  display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end}
+label{display:flex;flex-direction:column;font-size:.85em;color:#555;gap:2px}
+input,select{font-size:15px;padding:7px 9px;border:1px solid #ccc;border-radius:6px;background:#fff}
+input#mname{width:13em}
+.chk{flex-direction:row;align-items:center;gap:5px;padding-bottom:8px}
+button{font-size:15px;padding:8px 22px;border:0;border-radius:6px;background:var(--accent);
+  color:#fff;font-weight:700;cursor:pointer}
+button:hover{background:#245a42}
+button:disabled{background:#9bb3a8;cursor:wait}
+#status{margin:12px 2px;font-size:.95em;color:var(--warn)}
+#status.err{color:#a03415;font-weight:600}
+.cands{background:#fff;border-radius:10px;padding:12px 14px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.cands button{display:block;width:100%;text-align:left;background:#eef4f0;color:#222;
+  font-weight:400;margin:6px 0;padding:8px 12px}
+.cands button:hover{background:#d8efe1}
+ul.meta{margin:0 0 8px;padding-left:1.2em;color:#555;font-size:.9em}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 4px}
+table{border-collapse:collapse;white-space:nowrap;width:100%}
+th{background:var(--accent);color:#fff;padding:6px 9px;font-weight:600;font-size:.9em}
+td{padding:5px 9px;border-bottom:1px solid #e2ddd2;text-align:center;background:#fff}
+tr:nth-child(even) td{background:#f3f0e8}
+.b{display:inline-block;min-width:2.6em;padding:1px 7px;border-radius:10px;font-weight:700;font-size:.92em}
+.b-a{background:#d8efe1;color:#1c5b3f}.b-b{background:#fdeec9;color:#7b5e00}.b-c{background:#f9d9cf;color:#a03415}
+.v-ex{color:#1c5b3f;font-weight:700}.v-ok{color:#2d6a4f}.v-so{color:#7b5e00}.v-ng{color:#a03415}
+.sat{color:#1857a4;font-weight:600}.sun{color:#c0392b;font-weight:600}
+.notice{background:#fff8e6;border-left:5px solid var(--warn);padding:10px 12px;
+  border-radius:0 6px 6px 0;margin:18px 0;font-size:.9em}
+footer{color:#888;font-size:.85em;margin-top:22px;border-top:1px solid #ddd;padding-top:8px}
+footer a{color:var(--accent)}
+@media(max-width:600px){body{padding:8px;font-size:13px}input#mname{width:100%}
+  form{gap:8px 10px}}
+</style>
+</head>
+<body><main>
+
+<h1>sangaku-yohou<small>山の天気を「山頂の高さ」で</small></h1>
+<p class="lead">山名を入れるだけで、山頂気温・稜線風・体感温度・凍結高度・雷リスク・眺望・登山指数を表示します。
+仕組みは<a href="docs/how-it-works.html">図解ページ</a>を参照。</p>
+
+<form id="f">
+  <label>山名
+    <input id="mname" list="mtlist" placeholder="例: 燕岳" required autocomplete="off">
+    <datalist id="mtlist"></datalist>
+  </label>
+  <label>開始日
+    <input type="date" id="mdate">
+  </label>
+  <label>日数
+    <select id="mdays"><option>1</option><option selected>2</option><option>3</option></select>
+  </label>
+  <label class="chk"><input type="checkbox" id="mweekly">16日見通し</label>
+  <label class="chk"><input type="checkbox" id="mmodels">モデル比較</label>
+  <button id="go" type="submit">予報を見る</button>
+</form>
+
+<div id="status"></div>
+<div id="cands"></div>
+<div id="out"></div>
+
+<footer>
+データ: <a href="https://open-meteo.com/">Open-Meteo</a> (CC BY 4.0) /
+山岳座標: 国土地理院データで照合 /
+<a href="https://github.com/HALab18/sangaku-yohou">GitHub</a> /
+<a href="docs/how-it-works.html">仕組み解説</a> / MIT License
+</footer>
+
+<script>
+"use strict";
+const MOUNTAINS=[["利尻岳","りしりだけ","北海道",45.18042,141.24138,1721],["羅臼岳","らうすだけ","北海道",44.07568,145.12224,1661],["斜里岳","しゃりだけ","北海道",43.76567,144.71776,1547],["雌阿寒岳","めあかんだけ","北海道",43.3865,144.00909,1499],["大雪山(旭岳)","たいせつざん","北海道",43.66354,142.85413,2291],["トムラウシ山","とむらうしやま","北海道",43.52714,142.84858,2141],["十勝岳","とかちだけ","北海道",43.41784,142.6863,2077],["幌尻岳","ぽろしりだけ","北海道",42.71936,142.68286,2052],["羊蹄山","ようていざん","北海道",42.82696,140.80677,1898],["岩木山","いわきさん","青森県",40.6559,140.30303,1625],["八甲田山","はっこうださん","青森県",40.66732,140.87297,1585],["八幡平","はちまんたい","岩手県・秋田県",39.96344,140.8612,1613],["岩手山","いわてさん","岩手県",39.85258,141.00114,2038],["早池峰山","はやちねさん","岩手県",39.55835,141.48899,1917],["鳥海山","ちょうかいさん","山形県・秋田県",39.09668,140.04908,2236],["月山","がっさん","山形県",38.54556,140.02695,1984],["大朝日岳","おおあさひだけ","山形県",38.26057,139.92225,1871],["蔵王山(熊野岳)","ざおうさん","山形県・宮城県",38.14396,140.43984,1841],["飯豊山","いいでさん","福島県・山形県・新潟県",37.85486,139.70711,2105],["西吾妻山","にしあづまやま","福島県・山形県",37.73815,140.14078,2035],["安達太良山","あだたらやま","福島県",37.62113,140.28786,1700],["磐梯山","ばんだいさん","福島県",37.60098,140.07226,1816],["会津駒ヶ岳","あいづこまがたけ","福島県",37.04682,139.3539,2133],["那須岳(茶臼岳)","なすだけ","栃木県",37.12484,139.96313,1915],["越後駒ヶ岳","えちごこまがたけ","新潟県",37.12289,139.07458,2003],["平ヶ岳","ひらがたけ","新潟県・群馬県",37.00312,139.17223,2141],["巻機山","まきはたやま","新潟県",36.97855,138.96441,1967],["燧ヶ岳","ひうちがたけ","福島県",36.95312,139.28848,2356],["至仏山","しぶつさん","群馬県",36.9035,139.17322,2228],["谷川岳","たにがわだけ","群馬県・新潟県",36.83578,138.93033,1977],["雨飾山","あまかざりやま","新潟県・長野県",36.90211,137.96259,1963],["苗場山","なえばさん","新潟県・長野県",36.84599,138.69034,2145],["妙高山","みょうこうさん","新潟県",36.89275,138.1132,2454],["火打山","ひうちやま","新潟県",36.92268,138.06812,2462],["高妻山","たかつまやま","新潟県・長野県",36.79998,138.05192,2353],["男体山","なんたいさん","栃木県",36.76515,139.4908,2486],["皇海山","すかいさん","栃木県・群馬県",36.68988,139.33692,2144],["武尊山","ほたかやま","群馬県",36.80521,139.1326,2158],["赤城山(黒檜山)","あかぎさん","群馬県",36.56034,139.1933,1828],["四阿山","あずまやさん","群馬県・長野県",36.54155,138.41254,2354],["浅間山","あさまやま","群馬県・長野県",36.40657,138.52293,2568],["筑波山","つくばさん","茨城県",36.22594,140.10263,877],["白馬岳","しろうまだけ","長野県・富山県",36.75852,137.75848,2932],["鹿島槍ヶ岳","かしまやりがたけ","長野県・富山県",36.62608,137.74868,2889],["剱岳","つるぎだけ","富山県",36.62334,137.6172,2999],["立山","たてやま","富山県",36.5793,137.61824,3015],["薬師岳","やくしだけ","富山県",36.46886,137.54479,2926],["黒部五郎岳","くろべごろうだけ","富山県・岐阜県",36.39257,137.5399,2840],["水晶岳","すいしょうだけ","富山県",36.42714,137.60249,2986],["鷲羽岳","わしばだけ","長野県・富山県",36.40302,137.60546,2924],["槍ヶ岳","やりがたけ","長野県・岐阜県",36.34207,137.64771,3180],["奥穂高岳","おくほたかだけ","長野県・岐阜県",36.28922,137.64798,3190],["常念岳","じょうねんだけ","長野県",36.3255,137.72764,2857],["笠ヶ岳","かさがたけ","岐阜県",36.31547,137.55035,2898],["焼岳","やけだけ","長野県・岐阜県",36.22695,137.5871,2455],["乗鞍岳","のりくらだけ","長野県・岐阜県",36.10702,137.5504,3026],["御嶽山","おんたけさん","長野県・岐阜県",35.89402,137.47459,3067],["美ヶ原(王ヶ頭)","うつくしがはら","長野県",36.22582,138.10742,2034],["霧ヶ峰(車山)","きりがみね","長野県",36.10295,138.19666,1925],["蓼科山","たてしなやま","長野県",36.10373,138.29503,2531],["赤岳(八ヶ岳)","あかだけ","長野県・山梨県",35.97089,138.37021,2899],["両神山","りょうかみさん","埼玉県",36.02338,138.84121,1723],["雲取山","くもとりやま","東京都・埼玉県・山梨県",35.85558,138.94393,2017],["甲武信ヶ岳","こぶしがたけ","埼玉県・山梨県・長野県",35.90913,138.72887,2475],["金峰山","きんぷさん","山梨県・長野県",35.87152,138.62537,2599],["瑞牆山","みずがきやま","山梨県",35.89347,138.59209,2230],["大菩薩嶺","だいぼさつれい","山梨県",35.74871,138.84548,2057],["丹沢山","たんざわさん","神奈川県",35.47436,139.16263,1567],["富士山","ふじさん","山梨県・静岡県",35.3606,138.7274,3776],["天城山(万三郎岳)","あまぎさん","静岡県",34.86278,139.00175,1406],["木曽駒ヶ岳","きそこまがたけ","長野県",35.78983,137.80417,2956],["空木岳","うつぎだけ","長野県",35.71905,137.81712,2864],["恵那山","えなさん","長野県・岐阜県",35.44307,137.59792,2191],["甲斐駒ヶ岳","かいこまがたけ","山梨県・長野県",35.7578,138.2365,2967],["仙丈ヶ岳","せんじょうがたけ","長野県・山梨県",35.72012,138.18359,3033],["鳳凰山(観音岳)","ほうおうざん","山梨県",35.6963,138.3123,2841],["北岳","きただけ","山梨県",35.67456,138.23878,3193],["間ノ岳","あいのだけ","山梨県・静岡県",35.64602,138.22849,3190],["塩見岳","しおみだけ","長野県・静岡県",35.57315,138.18364,3052],["悪沢岳","わるさわだけ","静岡県",35.501,138.183,3141],["赤石岳","あかいしだけ","長野県・静岡県",35.46117,138.1574,3121],["聖岳","ひじりだけ","長野県・静岡県",35.42455,138.14229,3013],["光岳","てかりだけ","長野県・静岡県",35.33818,138.0838,2591],["白山","はくさん","石川県・岐阜県",36.15872,136.7693,2702],["荒島岳","あらしまだけ","福井県",35.93432,136.60132,1523],["伊吹山","いぶきやま","滋賀県・岐阜県",35.41786,136.40632,1377],["大台ヶ原山","おおだいがはらやま","奈良県・三重県",34.18382,136.0889,1695],["八経ヶ岳(大峰山)","はっきょうがたけ","奈良県",34.17358,135.90754,1915],["大山(伯耆)","だいせん","鳥取県",35.37329,133.54536,1729],["剣山","つるぎさん","徳島県",33.85361,134.09423,1955],["石鎚山","いしづちさん","愛媛県",33.77128,133.11247,1982],["九重山(中岳)","くじゅうさん","大分県",33.08216,131.24088,1791],["祖母山","そぼさん","大分県・宮崎県",32.8281,131.34695,1756],["阿蘇山(高岳)","あそさん","熊本県",32.88437,131.1039,1592],["霧島山(韓国岳)","きりしまやま","宮崎県・鹿児島県",31.93419,130.86163,1700],["開聞岳","かいもんだけ","鹿児島県",31.18014,130.52838,924],["宮之浦岳","みやのうらだけ","鹿児島県",30.33608,130.50411,1936],["燕岳","つばくろだけ","長野県",36.40674,137.71275,2763],["大天井岳","おてんしょうだけ","長野県",36.36499,137.70111,2922],["蝶ヶ岳","ちょうがたけ","長野県",36.28748,137.72614,2677],["唐松岳","からまつだけ","長野県・富山県",36.68717,137.75464,2696],["爺ヶ岳","じいがたけ","長野県・富山県",36.58841,137.75082,2670],["針ノ木岳","はりのきだけ","長野県・富山県",36.53808,137.68447,2821],["西穂高岳","にしほたかだけ","長野県・岐阜県",36.27905,137.62904,2909],["前穂高岳","まえほたかだけ","長野県",36.282,137.6605,3090],["北穂高岳","きたほたかだけ","長野県・岐阜県",36.30256,137.65195,3106],["双六岳","すごろくだけ","長野県・岐阜県",36.37188,137.58712,2860],["三俣蓮華岳","みつまたれんげだけ","長野県・富山県・岐阜県",36.39001,137.58768,2841],["野口五郎岳","のぐちごろうだけ","長野県・富山県",36.4327,137.63783,2924],["餓鬼岳","がきだけ","長野県",36.44726,137.736,2647],["霞沢岳","かすみざわだけ","長野県",36.22121,137.64056,2646],["有明山","ありあけやま","長野県",36.39105,137.77068,2268],["天狗岳(東天狗)","てんぐだけ","長野県",36.0193,138.3554,2640],["硫黄岳","いおうだけ","長野県",35.99881,138.36991,2760],["横岳(八ヶ岳)","よこだけ","長野県",35.98309,138.37428,2829],["権現岳(八ヶ岳)","ごんげんだけ","長野県・山梨県",35.95364,138.35962,2715],["阿弥陀岳","あみだだけ","長野県",35.97253,138.35874,2805],["編笠山","あみがさやま","長野県・山梨県",35.94173,138.34507,2524],["縞枯山","しまがれやま","長野県",36.07533,138.33151,2403],["入笠山","にゅうかさやま","長野県",35.89637,138.17164,1955],["宝剣岳","ほうけんだけ","長野県",35.78143,137.8092,2931],["高尾山","たかおさん","東京都",35.62523,139.24358,599],["大岳山","おおだけさん","東京都",35.76524,139.13038,1266],["三ツ峠山","みつとうげやま","山梨県",35.54926,138.8092,1785],["塔ノ岳","とうのだけ","神奈川県",35.45422,139.1633,1491],["蛭ヶ岳","ひるがたけ","神奈川県",35.48634,139.13893,1673],["大山(丹沢)","おおやま","神奈川県",35.44086,139.23116,1252],["平標山","たいらっぴょうやま","新潟県・群馬県",36.81786,138.82188,1984],["飯縄山","いいづなやま","長野県",36.73955,138.13369,1917],["黒姫山","くろひめやま","長野県",36.81351,138.12714,2053],["戸隠山","とがくしやま","長野県",36.77054,138.0596,1904],["秋田駒ヶ岳","あきたこまがたけ","秋田県",39.76082,140.80356,1637],["栗駒山","くりこまやま","岩手県・宮城県・秋田県",38.96107,140.78833,1626],["焼石岳","やけいしだけ","岩手県",39.16369,140.82883,1547],["森吉山","もりよしざん","秋田県",39.97673,140.54421,1454],["船形山","ふながたやま","宮城県・山形県",38.45537,140.61985,1500],["泉ヶ岳","いずみがたけ","宮城県",38.41155,140.70976,1172],["大東岳","だいとうだけ","宮城県",38.30217,140.52356,1366],["面白山","おもしろやま","山形県・宮城県",38.34868,140.52236,1264],["屏風岳","びょうぶだけ","宮城県",38.09325,140.47664,1825],["不忘山","ふぼうさん","宮城県",38.07567,140.47887,1705],["一切経山","いっさいきょうざん","福島県",37.73539,140.24434,1949],["由布岳","ゆふだけ","大分県",33.28228,131.39026,1583],["日光白根山","にっこうしらねさん","栃木県・群馬県",36.7995,139.3756,2578],["草津白根山(本白根山)","くさつしらねさん","群馬県",36.6183,138.5275,2171],["五竜岳","ごりゅうだけ","富山県・長野県",36.658,137.7535,2814],["北横岳","きたよこだけ","長野県",36.087,138.3202,2480]];
+
+// ---- 定数 (scripts/mountain_weather.py と同一ロジック) ----
+const LEVELS=[[925,760],[900,990],[850,1460],[800,1950],[700,3010],[600,4200]];
+const WMO={0:"快晴",1:"晴れ",2:"晴れ時々曇り",3:"曇り",45:"霧",48:"着氷性の霧",
+ 51:"霧雨(弱)",53:"霧雨",55:"霧雨(強)",56:"着氷性霧雨",57:"着氷性霧雨(強)",
+ 61:"雨(弱)",63:"雨",65:"雨(強)",66:"着氷性の雨",67:"着氷性の雨(強)",
+ 71:"雪(弱)",73:"雪",75:"雪(強)",77:"霧雪",80:"にわか雨(弱)",81:"にわか雨",82:"にわか雨(強)",
+ 85:"にわか雪",86:"にわか雪(強)",95:"雷雨",96:"雷雨(雹)",99:"雷雨(激しい雹)"};
+const DIR16=["北","北北東","北東","東北東","東","東南東","南東","南南東","南","南南西","南西","西南西","西","西北西","北西","北北西"];
+const WJA="日月火水木金土";
+const IDX={A:'<span class="b b-a">A◎</span>',B:'<span class="b b-b">B△</span>',C:'<span class="b b-c">C✕</span>'};
+const VCLS={"◎":"v-ex","○":"v-ok","△":"v-so","✕":"v-ng"};
+
+const wdir=d=>d==null?"-":DIR16[Math.floor(((d+11.25)%360)/22.5)];
+const wcode=c=>c==null?"-":(WMO[c]||`code${c}`);
+const f0=(v,none="-")=>v==null?none:Math.round(v).toString();
+const f1=v=>v==null?"-":v.toFixed(1);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const md=d=>`${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+const wj=d=>{const w=WJA[d.getDay()];const cls=w==="土"?"sat":w==="日"?"sun":"";return cls?`<span class="${cls}">(${w})</span>`:`(${w})`};
+
+function bracket(elev){
+  if(elev<=LEVELS[0][1])return[LEVELS[0],LEVELS[0],0];
+  for(let i=0;i<LEVELS.length-1;i++){
+    const lo=LEVELS[i],hi=LEVELS[i+1];
+    if(elev>=lo[1]&&elev<=hi[1])return[lo,hi,(elev-lo[1])/(hi[1]-lo[1])];
+  }
+  return[LEVELS.at(-1),LEVELS.at(-1),0];
+}
+function ridgeWind(h,i,lo,hi,t){
+  const sLo=h[`wind_speed_${lo[0]}hPa`]?.[i],sHi=h[`wind_speed_${hi[0]}hPa`]?.[i];
+  const dLo=h[`wind_direction_${lo[0]}hPa`]?.[i],dHi=h[`wind_direction_${hi[0]}hPa`]?.[i];
+  if(sLo==null||sHi==null)return[sLo??sHi??null,dLo??dHi??null];
+  return[sLo+(sHi-sLo)*t,t<0.5?dLo:dHi];
+}
+function blockIndex(ws,pr3,prob,cape){
+  let idx="A";const worse=v=>{if(v==="C"||idx==="C")idx="C";else if(v==="B")idx="B"};
+  if(ws!=null){if(ws>=15)worse("C");else if(ws>=10)worse("B")}
+  if(pr3!=null){if(pr3>=5)worse("C");else if(pr3>=1)worse("B")}
+  if(prob!=null&&prob>=70)worse("B");
+  if(cape!=null){if(cape>=1000)worse("C");else if(cape>=500)worse("B")}
+  return idx;
+}
+function viewScore(elev,low,mid,pr3,vis){
+  const summit=elev<2000?Math.max(low??-1,mid??-1)<0?null:Math.max(low??0,mid??0):mid;
+  const below=elev<2000?null:low;
+  if(pr3!=null&&pr3>=1)return["✕","雨"];
+  if(vis!=null&&vis<2000)return["✕","ガス"];
+  if(summit!=null&&summit>=80)return["✕","ガス"];
+  if((summit!=null&&summit>=50)||(vis!=null&&vis<10000))return["△",""];
+  const unkai=below!=null&&below>=60&&(summit??0)<=30;
+  if((summit??0)<=20&&(vis==null||vis>=20000))return["◎",unkai?"雲海":""];
+  return["○",unkai?"雲海":""];
+}
+const vhtml=([v,n])=>`<span class="${VCLS[v]}">${v}${n?`(${n})`:""}</span>`;
+
+// ---- APIアクセス (リトライつき) ----
+async function apiJson(url,params,retries=3){
+  const q=new URLSearchParams(params).toString();
+  let lastErr;
+  for(let a=1;a<=retries;a++){
+    try{
+      const r=await fetch(`${url}?${q}`);
+      if(!r.ok){
+        if(r.status<500)throw Object.assign(new Error(`HTTP ${r.status}`),{fatal:true});
+        throw new Error(`HTTP ${r.status}`);
+      }
+      return await r.json();
+    }catch(e){
+      lastErr=e;
+      if(e.fatal||a===retries)break;
+      await new Promise(res=>setTimeout(res,1500*a));
+    }
+  }
+  throw new Error(`API呼び出しに失敗しました: ${lastErr.message||lastErr}`);
+}
+
+// ---- 山名解決 ----
+function resolveLocal(name){
+  let hits=MOUNTAINS.filter(m=>m[0]===name||m[1]===name);
+  if(!hits.length)hits=MOUNTAINS.filter(m=>m[0].includes(name));
+  return hits;
+}
+async function resolveGeo(name){
+  const d=await apiJson("https://geocoding-api.open-meteo.com/v1/search",{name,count:10,language:"ja"});
+  const res=(d.results||[]).filter(r=>r.country_code==="JP");
+  const mt=res.filter(r=>["MT","PK","VLC","HLL","MTS"].includes(r.feature_code));
+  return(mt.length?mt:res).map(r=>({name:r.name,pref:r.admin1||"?",lat:r.latitude,lon:r.longitude,
+    elev:r.elevation??null,geo:true}));
+}
+
+// ---- 予報取得・描画 ----
+function dayIdx(times,dstr){const out=[];for(let i=0;i<times.length;i++)if(times[i].startsWith(dstr))out.push(i);return out}
+
+async function run(mt){
+  const status=document.getElementById("status"),out=document.getElementById("out");
+  const weekly=document.getElementById("mweekly").checked;
+  const compare=document.getElementById("mmodels").checked;
+  const days=+document.getElementById("mdays").value;
+  const today=new Date();today.setHours(0,0,0,0);
+  const horizon=addDays(today,15);
+  let start=document.getElementById("mdate").value?new Date(document.getElementById("mdate").value+"T00:00"):today;
+  if(start<today)start=today;
+  if(start>horizon){status.className="err";status.textContent=`予報範囲外です(最長16日先=${iso(horizon)}まで)`;return}
+  const detailEnd=new Date(Math.min(addDays(start,days-1),horizon));
+  const fetchEnd=weekly?horizon:new Date(Math.min(Math.max(+addDays(today,6),+detailEnd),+horizon));
+
+  const[lo,hi,t]=bracket(mt.elev);
+  const levels=lo[0]===hi[0]?[lo]:[lo,hi];
+  const hourly=["temperature_2m","precipitation","precipitation_probability","weather_code",
+    "cloud_cover_low","cloud_cover_mid","cloud_cover_high","wind_speed_10m","wind_gusts_10m",
+    "freezing_level_height","cape","visibility",
+    ...levels.flatMap(p=>[`wind_speed_${p[0]}hPa`,`wind_direction_${p[0]}hPa`])];
+  status.className="";status.textContent="予報を取得中…";
+  const data=await apiJson("https://api.open-meteo.com/v1/forecast",{
+    latitude:mt.lat,longitude:mt.lon,elevation:mt.elev,
+    hourly:hourly.join(","),
+    daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset",
+    timezone:"Asia/Tokyo",wind_speed_unit:"ms",
+    start_date:iso(today),end_date:iso(fetchEnd)});
+  const h=data.hourly,times=h.time,d=data.daily;
+
+  let htmlOut=`<h2>${esc(mt.name)}(${esc(mt.pref)}) の山岳気象予報</h2><ul class="meta">
+    <li>地点: 北緯${mt.lat.toFixed(4)} 東経${mt.lon.toFixed(4)} / 標高 ${Math.round(mt.elev)}m
+      (${mt.geo?"地名検索: 標高はグリッド値で山頂より低いことがあります":"内蔵DB"})</li>
+    <li>稜線風: ${lo[0]===hi[0]?lo[0]+"hPa":lo[0]+"/"+hi[0]+"hPa補間"} / 気温は標高${Math.round(mt.elev)}m面 /
+      体感温度 = 気温 − 稜線風速×1 (慣用則)</li></ul>`;
+
+  // 日別サマリ
+  const rows=[];
+  for(let dt2=new Date(today);dt2<=fetchEnd;dt2=addDays(dt2,1)){
+    const ds=iso(dt2),di=d.time.indexOf(ds);if(di<0)continue;
+    const idxs=dayIdx(times,ds);
+    const act=idxs.filter(i=>{const hr=+times[i].slice(11,13);return hr>=5&&hr<=16});
+    let dayIdxV="A",wsMax=null,wdMax=null;
+    for(let sh=3;sh<18;sh+=3){
+      const blk=act.filter(i=>Math.floor(+times[i].slice(11,13)/3)*3===sh);
+      if(!blk.length)continue;
+      const rw=blk.map(i=>ridgeWind(h,i,lo,hi,t));
+      const ws=Math.max(...rw.map(x=>x[0]??-1));
+      if(ws>=0&&(wsMax==null||ws>wsMax)){wsMax=ws;wdMax=rw.find(x=>x[0]===ws)?.[1]}
+      const pr=blk.reduce((s,i)=>s+(h.precipitation[i]||0),0);
+      const prob=Math.max(...blk.map(i=>h.precipitation_probability?.[i]??-1));
+      const cape=Math.max(...blk.map(i=>h.cape?.[i]??-1));
+      const bi=blockIndex(ws<0?null:ws,pr,prob<0?null:prob,cape<0?null:cape);
+      if(bi==="C"||(bi==="B"&&dayIdxV==="A"))dayIdxV=bi;
+    }
+    // 朝の眺望 (4-8時の最良)
+    const order={"◎":0,"○":1,"△":2,"✕":3};let best=null;
+    for(const i of idxs){
+      const hr=+times[i].slice(11,13);if(hr<4||hr>8)continue;
+      const v=viewScore(mt.elev,h.cloud_cover_low[i],h.cloud_cover_mid[i],
+        (h.precipitation[i]||0)*3,h.visibility?.[i]);
+      if(best==null||order[v[0]]<order[best[0]])best=v;
+    }
+    const fls=idxs.map(i=>h.freezing_level_height?.[i]).filter(v=>v!=null);
+    rows.push({d:new Date(dt2),idx:dayIdxV,code:d.weather_code[di],
+      tmin:d.temperature_2m_min[di],tmax:d.temperature_2m_max[di],
+      ws:wsMax,wd:wdMax,pr:d.precipitation_sum[di],prob:d.precipitation_probability_max[di],
+      fl:fls.length?Math.min(...fls):null,view:best?vhtml(best):"-"});
+  }
+  htmlOut+=`<h2>${weekly?"16日間の見通し":"日別サマリ"}</h2><div class="tbl"><table>
+    <tr><th>日付</th><th>指数</th><th>天気</th><th>眺望(朝)</th><th>山頂気温</th><th>稜線風max(5-16時)</th><th>降水量</th><th>降水%</th><th>凍結高度min</th></tr>`;
+  for(const r of rows)htmlOut+=`<tr><td>${md(r.d)}${wj(r.d)}</td><td>${IDX[r.idx]}</td><td>${wcode(r.code)}</td>
+    <td>${r.view}</td><td>${f0(r.tmin)}〜${f0(r.tmax)}℃</td><td>${wdir(r.wd)} ${f1(r.ws)}m/s</td>
+    <td>${r.pr==null?"-":r.pr.toFixed(1)}mm</td><td>${f0(r.prob)}%</td><td>${f0(r.fl)}m</td></tr>`;
+  htmlOut+=`</table></div>`;
+
+  // 3時間ごと詳細
+  for(let dt2=new Date(start);dt2<=detailEnd;dt2=addDays(dt2,1)){
+    const ds=iso(dt2),idxs=dayIdx(times,ds);if(!idxs.length)continue;
+    const di=d.time.indexOf(ds);
+    const sun=di>=0&&d.sunrise?.[di]?` (日の出${d.sunrise[di].slice(11,16)} / 日の入${d.sunset[di].slice(11,16)})`:"";
+    htmlOut+=`<h2>${ds} ${wj(dt2)} 3時間ごと詳細${sun}</h2><div class="tbl"><table>
+      <tr><th>時刻</th><th>天気</th><th>眺望</th><th>気温</th><th>体感</th><th>稜線風</th><th>突風</th><th>降水</th><th>降水%</th><th>雷CAPE</th><th>雲(下/中/上)</th><th>視程</th><th>凍結高度</th></tr>`;
+    for(let sh=0;sh<24;sh+=3){
+      const blk=idxs.filter(i=>Math.floor(+times[i].slice(11,13)/3)*3===sh);
+      if(!blk.length)continue;
+      const i0=blk[0],temp=h.temperature_2m[i0];
+      const rw=blk.map(i=>ridgeWind(h,i,lo,hi,t));
+      const wsArr=rw.map(x=>x[0]).filter(v=>v!=null);
+      const ws=wsArr.length?Math.max(...wsArr):null;
+      const wd2=rw.find(x=>x[0]===ws)?.[1];
+      const gustArr=blk.map(i=>h.wind_gusts_10m?.[i]).filter(v=>v!=null);
+      const gust=gustArr.length?Math.max(...gustArr):null;
+      const pr=blk.reduce((s,i)=>s+(h.precipitation[i]||0),0);
+      const probArr=blk.map(i=>h.precipitation_probability?.[i]).filter(v=>v!=null);
+      const prob=probArr.length?Math.max(...probArr):null;
+      const capeArr=blk.map(i=>h.cape?.[i]).filter(v=>v!=null);
+      const cape=capeArr.length?Math.max(...capeArr):null;
+      const visArr=blk.map(i=>h.visibility?.[i]).filter(v=>v!=null);
+      const vis=visArr.length?Math.min(...visArr):null;
+      const feel=(temp==null||ws==null)?null:temp-ws;
+      const view=vhtml(viewScore(mt.elev,h.cloud_cover_low[i0],h.cloud_cover_mid[i0],pr,vis));
+      const cl=`${f0(h.cloud_cover_low[i0])}/${f0(h.cloud_cover_mid[i0])}/${f0(h.cloud_cover_high[i0])}%`;
+      const visTxt=vis==null?"-":vis>=1000?`${Math.round(vis/1000)}km`:`${Math.round(vis)}m`;
+      htmlOut+=`<tr><td>${String(sh).padStart(2,"0")}時</td><td>${wcode(h.weather_code[i0])}</td><td>${view}</td>
+        <td>${temp==null?"-":temp.toFixed(1)}℃</td><td>${f0(feel)}℃</td><td>${wdir(wd2)} ${f1(ws)}m/s</td>
+        <td>${f0(gust)}m/s</td><td>${pr.toFixed(1)}mm</td><td>${f0(prob)}%</td><td>${f0(cape)}</td>
+        <td>${cl}</td><td>${visTxt}</td><td>${f0(h.freezing_level_height?.[i0])}m</td></tr>`;
+    }
+    htmlOut+=`</table></div>`;
+  }
+
+  // モデル比較
+  if(compare){
+    status.textContent="モデル比較を取得中…";
+    const cmpEnd=new Date(Math.min(+detailEnd,+addDays(start,2)));
+    const models=["jma_seamless","ecmwf_ifs025","gfs_seamless"];
+    const labels={jma_seamless:"気象庁JMA",ecmwf_ifs025:"欧州ECMWF",gfs_seamless:"米国GFS"};
+    const cd=await apiJson("https://api.open-meteo.com/v1/forecast",{
+      latitude:mt.lat,longitude:mt.lon,elevation:mt.elev,
+      hourly:"temperature_2m,precipitation,wind_speed_10m,cloud_cover",
+      timezone:"Asia/Tokyo",wind_speed_unit:"ms",models:models.join(","),
+      start_date:iso(start),end_date:iso(cmpEnd)});
+    const ch=cd.hourly;
+    htmlOut+=`<h2>モデル間比較（各モデルが一致するほど信頼度が高い）</h2><div class="tbl"><table>
+      <tr><th>日付</th><th>モデル</th><th>気温min〜max</th><th>降水量</th><th>10m風max</th><th>平均雲量</th></tr>`;
+    for(let dt2=new Date(start);dt2<=cmpEnd;dt2=addDays(dt2,1)){
+      const idxs=dayIdx(ch.time,iso(dt2));
+      for(const m of models){
+        const col=v=>{const k=ch[`${v}_${m}`]?`${v}_${m}`:v;return idxs.map(i=>ch[k]?.[i]).filter(x=>x!=null)};
+        const temps=col("temperature_2m"),precs=col("precipitation"),winds=col("wind_speed_10m"),clouds=col("cloud_cover");
+        htmlOut+=temps.length?
+          `<tr><td>${md(dt2)}</td><td>${labels[m]}</td><td>${Math.round(Math.min(...temps))}〜${Math.round(Math.max(...temps))}℃</td>
+           <td>${precs.reduce((a,b)=>a+b,0).toFixed(1)}mm</td><td>${Math.max(...winds).toFixed(1)}m/s</td>
+           <td>${Math.round(clouds.reduce((a,b)=>a+b,0)/clouds.length)}%</td></tr>`:
+          `<tr><td>${md(dt2)}</td><td>${labels[m]}</td><td colspan="4">(データなし)</td></tr>`;
+      }
+    }
+    htmlOut+=`</table></div>`;
+  }
+
+  htmlOut+=`<div class="notice">⚠️ 数値予報は山岳地形では誤差が大きく、局地的な突風・雷雨・視界不良は表現しきれません。
+    登山指数は目安です。最終判断は最新の予報（<a href="https://i.yamatenki.co.jp/">ヤマテン</a>・
+    <a href="https://tenki.jp/mountain/">tenki.jp山の天気</a>等）と現地の状況で行ってください。</div>`;
+  out.innerHTML=htmlOut;
+  status.textContent="";
+  location.hash=encodeURIComponent(mt.name)+"/"+iso(start)+"/"+days+(weekly?"/w":"");
+}
+
+// ---- フォーム制御 ----
+function showCandidates(list){
+  const c=document.getElementById("cands");
+  c.innerHTML="<b>複数の候補があります。選んでください:</b>"+list.map((m,i)=>
+    `<button data-i="${i}">${esc(m.name)}（${esc(m.pref)}） 標高${m.elev==null?"?":Math.round(m.elev)}m</button>`).join("");
+  c.querySelectorAll("button").forEach(b=>b.onclick=()=>{c.innerHTML="";go(list[+b.dataset.i])});
+}
+async function go(mt){
+  const btn=document.getElementById("go"),status=document.getElementById("status");
+  btn.disabled=true;
+  try{await run(mt)}
+  catch(e){status.className="err";status.textContent=e.message+" — 時間をおいて再度お試しください";}
+  finally{btn.disabled=false}
+}
+document.getElementById("f").onsubmit=async e=>{
+  e.preventDefault();
+  const status=document.getElementById("status");
+  document.getElementById("cands").innerHTML="";document.getElementById("out").innerHTML="";
+  status.className="";status.textContent="";
+  const name=document.getElementById("mname").value.trim();
+  let hits=resolveLocal(name).map(m=>({name:m[0],pref:m[2],lat:m[3],lon:m[4],elev:m[5]}));
+  if(hits.length===1)return go(hits[0]);
+  if(hits.length>1)return showCandidates(hits);
+  status.textContent="内蔵DBに無いため地名検索中…";
+  try{
+    const geo=await resolveGeo(name);
+    if(!geo.length){status.className="err";status.textContent=`「${name}」が見つかりませんでした`;return}
+    const ok=geo.filter(g=>g.elev!=null);
+    if(ok.length===1)return go(ok[0]);
+    showCandidates(ok.length?ok:geo);status.textContent="";
+  }catch(e){status.className="err";status.textContent=e.message}
+};
+
+// 初期化: datalist・日付範囲・URLハッシュ復元
+{
+  const dl=document.getElementById("mtlist");
+  for(const m of MOUNTAINS){const o=document.createElement("option");o.value=m[0];o.label=`${m[2]} ${m[5]}m`;dl.appendChild(o)}
+  const today=new Date(),di=document.getElementById("mdate");
+  di.value=iso(today);di.min=iso(today);di.max=iso(addDays(today,15));
+  const hash=decodeURIComponent(location.hash.slice(1));
+  if(hash){
+    const[nm,dt2,dy,wk]=hash.split("/");
+    if(nm){document.getElementById("mname").value=nm;
+      if(dt2)di.value=dt2;if(dy)document.getElementById("mdays").value=dy;
+      if(wk==="w")document.getElementById("mweekly").checked=true;
+      document.getElementById("f").requestSubmit();}
+  }
+}
+</script>
+</main></body>
+</html>
