@@ -45,6 +45,12 @@ tr:nth-child(even) td{background:#f3f0e8}
 .sat{color:#1857a4;font-weight:600}.sun{color:#c0392b;font-weight:600}
 .notice{background:#fff8e6;border-left:5px solid var(--warn);padding:10px 12px;
   border-radius:0 6px 6px 0;margin:18px 0;font-size:.9em}
+.gate{background:#fff8e6;border:2px solid var(--warn);border-radius:10px;padding:14px 16px;margin:12px 0}
+.gate p{margin:0 0 10px;font-size:.92em}
+.gate label{flex-direction:row;align-items:flex-start;gap:8px;font-weight:700;font-size:.95em;cursor:pointer}
+.gate input[type=checkbox]{width:18px;height:18px;margin-top:2px;flex:none}
+#appwrap{opacity:.4;pointer-events:none;filter:grayscale(60%);transition:opacity .2s,filter .2s}
+#appwrap.enabled{opacity:1;pointer-events:auto;filter:none}
 footer{color:#888;font-size:.85em;margin-top:22px;border-top:1px solid #ddd;padding-top:8px}
 footer a{color:var(--accent)}
 @media(max-width:600px){body{padding:8px;font-size:13px}input#mname{width:100%}
@@ -57,6 +63,16 @@ footer a{color:var(--accent)}
 <p class="lead">山名を入れるだけで、山頂気温・稜線風・体感温度・凍結高度・雷リスク・眺望・登山指数を表示します。
 仕組みは<a href="docs/how-it-works.html">図解ページ</a>を参照。</p>
 
+<div class="gate" id="gate">
+  <p>⚠️ 本サービスの情報は<b>参考情報</b>であり、正確性の保証・登山の安全を保証するものではありません。
+  本サービスの利用により生じたいかなる損害についても開発者は責任を負わず、
+  クレーム・苦情等は一切お受けできません。利用前に必ず
+  <a href="docs/terms.html" target="_blank" rel="noopener">利用規約・免責事項</a>をお読みください。</p>
+  <label><input type="checkbox" id="agree">
+  上記および<a href="docs/terms.html" target="_blank" rel="noopener">利用規約・免責事項</a>の内容を読み、同意します（同意する方のみご利用いただけます）</label>
+</div>
+
+<div id="appwrap">
 <form id="f">
   <label>山名
     <input id="mname" list="mtlist" placeholder="例: 燕岳" required autocomplete="off">
@@ -76,13 +92,15 @@ footer a{color:var(--accent)}
 <div id="status"></div>
 <div id="cands"></div>
 <div id="out"></div>
+</div>
 
 <footer>
 製作者: ふぇと /
 データ: <a href="https://open-meteo.com/">Open-Meteo</a> (CC BY 4.0) /
 山岳座標: 国土地理院データで照合 /
 <a href="https://github.com/HALab18/sangaku-yohou">GitHub</a> /
-<a href="docs/how-it-works.html">仕組み解説</a> / MIT License
+<a href="docs/how-it-works.html">仕組み解説</a> /
+<a href="docs/terms.html">利用規約・免責事項</a> / MIT License
 </footer>
 
 <script>
@@ -364,20 +382,44 @@ document.getElementById("f").onsubmit=async e=>{
   }catch(e){status.className="err";status.textContent=e.message}
 };
 
+// ---- 利用規約への同意ゲート ----
+// 同意しない限り本体フォームは操作不可(pointer-events:none)。同意はローカル保存し次回以降は再表示しない。
+const AGREE_KEY="sangaku-yohou-agreed-v1";
+function applyHash(){
+  const hash=decodeURIComponent(location.hash.slice(1));
+  if(!hash)return;
+  const[nm,dt2,dy,wk]=hash.split("/");
+  if(!nm)return;
+  document.getElementById("mname").value=nm;
+  const di=document.getElementById("mdate");
+  if(dt2)di.value=dt2;
+  if(dy)document.getElementById("mdays").value=dy;
+  if(wk==="w")document.getElementById("mweekly").checked=true;
+  document.getElementById("f").requestSubmit();
+}
+{
+  const agreeBox=document.getElementById("agree"),wrap=document.getElementById("appwrap");
+  const agreed=localStorage.getItem(AGREE_KEY)==="1";
+  if(agreed){agreeBox.checked=true;wrap.classList.add("enabled")}
+  agreeBox.addEventListener("change",()=>{
+    if(agreeBox.checked){
+      localStorage.setItem(AGREE_KEY,"1");
+      wrap.classList.add("enabled");
+      applyHash();
+    }else{
+      localStorage.removeItem(AGREE_KEY);
+      wrap.classList.remove("enabled");
+    }
+  });
+}
+
 // 初期化: datalist・日付範囲・URLハッシュ復元
 {
   const dl=document.getElementById("mtlist");
   for(const m of MOUNTAINS){const o=document.createElement("option");o.value=m[0];o.label=`${m[2]} ${m[5]}m`;dl.appendChild(o)}
   const today=new Date(),di=document.getElementById("mdate");
   di.value=iso(today);di.min=iso(today);di.max=iso(addDays(today,15));
-  const hash=decodeURIComponent(location.hash.slice(1));
-  if(hash){
-    const[nm,dt2,dy,wk]=hash.split("/");
-    if(nm){document.getElementById("mname").value=nm;
-      if(dt2)di.value=dt2;if(dy)document.getElementById("mdays").value=dy;
-      if(wk==="w")document.getElementById("mweekly").checked=true;
-      document.getElementById("f").requestSubmit();}
-  }
+  if(localStorage.getItem(AGREE_KEY)==="1")applyHash();
 }
 </script>
 </main></body>
