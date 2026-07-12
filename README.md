@@ -28,7 +28,9 @@ python scripts/mountain_weather.py --name 燕岳
 - **HTMLレポート出力**: 色分きの単一HTMLで保存、スマホでもそのまま見られる
 - **依存ゼロ**: Python 3 標準ライブラリのみ。APIキー・アカウント登録不要
 
-仕組みの詳しい解説（図解入り・非エンジニア向け）: [docs/how-it-works.html](docs/how-it-works.html) をブラウザで開いてください。
+仕組みの詳しい解説（図解入り・非エンジニア向け）:
+**[https://halab18.github.io/sangaku-yohou/docs/how-it-works.html](https://halab18.github.io/sangaku-yohou/docs/how-it-works.html)**
+（リポジトリ内の [docs/how-it-works.html](docs/how-it-works.html) をブラウザで開いても同じものが見られます）
 
 ## 必要なもの
 
