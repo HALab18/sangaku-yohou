@@ -25,9 +25,21 @@ python scripts\mountain_weather.py --lat 36.407 --lon 137.713 --elev 2763 --labe
 scripts/mountain_weather.py   本体（scripts/ と references/ は同じ親直下に置くこと）
 references/mountains.csv      内蔵山岳DB (name,yomi,pref,lat,lon,elev)
 references/criteria.md        登山指数A/B/C・眺望指数◎○△✕の判定基準
+skill/SKILL.md                Claude Code スキル定義のテンプレート
 ```
 
-## Claude Code スキル連携
+## 別PCでのセットアップ
 
-`C:\Users\feto_\.claude\skills\sangaku-yohou\SKILL.md` がこのディレクトリの
-スクリプトを参照している。本体をさらに移動する場合は SKILL.md のパスも更新すること。
+1. このリポジトリをクローン
+2. Python 3 が入っていることを確認（`python --version`。追加パッケージ不要）
+3. 動作確認: `python scripts\mountain_weather.py --name 燕岳`
+   - 社内プロキシ環境では `HTTPS_PROXY` の設定が必要な場合あり
+   - SSL検査型セキュリティ製品下では証明書エラーが出ることがある
+
+## Claude Code スキル連携（任意）
+
+「〇〇岳の予報を調べて」でClaude Codeから自動起動させたい場合:
+
+1. `skill/SKILL.md` を `~/.claude/skills/sangaku-yohou/SKILL.md` にコピー
+   （Windows: `C:\Users\<ユーザー名>\.claude\skills\sangaku-yohou\SKILL.md`）
+2. コピー先ファイル内の `{{REPO_PATH}}` をクローン先の絶対パス（例: `D:\dev\lab6`）に一括置換
