@@ -66,16 +66,30 @@ def wcode(code):
 
 
 def http_json(url, params, retries=3):
-    """一時的な通信エラー(接続断・SSLハンドシェイクタイムアウト・5xx等)は指数バックオフで再試行する"""
-    q = urllib.parse.urlencode(params, safe=",")
-    req = urllib.request.Request(f"{url}?{q}", headers={"User-Agent": "sangaku-yohou-skill"})
+    """一時的な通信エラー(接続断・SSLハンドシェイクタイムアウト・5xx等)は指数バックオフで再試行する。
+    予報モデルの更新時刻によっては end_date が16日先まで受け付けられず HTTP 400 になるため、
+    その場合は応答の reason から許容最終日をパースして end_date を縮め、1回だけ再試行する"""
     last_err = None
-    for attempt in range(1, retries + 1):
+    clamped = False
+    attempt = 1
+    while attempt <= retries:
+        q = urllib.parse.urlencode(params, safe=",")
+        req = urllib.request.Request(f"{url}?{q}", headers={"User-Agent": "sangaku-yohou-skill"})
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             last_err = e
+            if e.code == 400 and not clamped:
+                try:
+                    reason = json.loads(e.read().decode("utf-8")).get("reason", "")
+                except Exception:
+                    reason = ""
+                m = re.search(r"'end_date'.* to (\d{4}-\d{2}-\d{2})", reason)
+                if m and str(params.get("start_date", "")) <= m.group(1) < str(params.get("end_date", "")):
+                    params = dict(params, end_date=m.group(1))
+                    clamped = True
+                    continue  # 再試行回数は消費しない
             if e.code < 500 or attempt == retries:
                 sys.exit(f"ERROR: API呼び出しに失敗しました ({url}): HTTP {e.code} {e.reason}")
         except Exception as e:
@@ -86,6 +100,7 @@ def http_json(url, params, retries=3):
         print(f"通信エラーのため再試行します ({attempt}/{retries}, {wait:.0f}秒後): {last_err}",
               file=sys.stderr)
         time.sleep(wait)
+        attempt += 1
     sys.exit(f"ERROR: API呼び出しに{retries}回失敗しました ({url}): {last_err}\n"
              f"ネットワーク接続、プロキシ設定、セキュリティソフトのSSL検査機能を確認してください。")
 
@@ -220,7 +235,7 @@ def feels_like(temp, ridge_ws):
     return 13.12 + 0.6215 * temp - 11.37 * v ** 0.16 + 0.3965 * temp * v ** 0.16
 
 
-IDX_MARK = {"A": "A◎", "B": "B△", "C": "C✕"}
+IDX_MARK = {"A": "A", "B": "B", "C": "C"}
 
 
 # ---------------------------------------------------------------- 眺望
@@ -480,10 +495,10 @@ footer{color:#888;font-size:.85em;margin-top:20px}
 def _decorate_cell(cell):
     """表セル内の指数/眺望/曜日マークに色クラスを付与"""
     c = html_mod.escape(cell)
-    for mark, cls in (("A◎", "b b-a"), ("B△", "b b-b"), ("C✕", "b b-c")):
-        if c.startswith(mark):
-            rest = c[len(mark):]
-            return f'<span class="{cls}">{mark}</span>{rest}'
+    m = re.match(r"^([ABC])($|\s.*)", c)
+    if m:
+        cls = {"A": "b b-a", "B": "b b-b", "C": "b b-c"}[m.group(1)]
+        return f'<span class="{cls}">{m.group(1)}</span>{m.group(2)}'
     m = re.match(r"^([◎○△✕])(\(.+\))?$", c)
     if m:
         cls = {"◎": "v-ex", "○": "v-ok", "△": "v-so", "✕": "v-ng"}[m.group(1)]
@@ -601,7 +616,8 @@ def main():
         print(f"- 地点: 北緯{lat:.4f} 東経{lon:.4f} / 標高 {elev:.0f}m ({src})")
         print(f"- 稜線風: {lv} の風を山頂標高に合わせて算出 / 気温は標高{elev:.0f}m面の値")
         th0 = season_thresholds(start.month)
-        print(f"- 登山指数: {th0['mode']}モード基準 (風 {th0['wind'][0]}/{th0['wind'][1]}m/s・"
+        print(f"- 登山指数: A=登山適 / B=要注意(経験者向き・行程短縮検討) / C=登山不適。"
+              f"{th0['mode']}モード基準 (風 {th0['wind'][0]}/{th0['wind'][1]}m/s・"
               f"降水 {th0['precip'][0]}/{th0['precip'][1]}mm/3h・CAPE 500/1000)。"
               f"夏山=6〜10月/冬山・残雪期=11〜5月を対象日の月で自動切替。降水確率は参考表示")
         print(f"- 体感温度 = 風冷指数 (JAG/TI式。風速4.8km/h未満は気温をそのまま採用) "

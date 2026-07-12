@@ -120,7 +120,7 @@ const WMO={0:"快晴",1:"晴れ",2:"晴れ時々曇り",3:"曇り",45:"霧",48:"
  85:"にわか雪",86:"にわか雪(強)",95:"雷雨",96:"雷雨(雹)",99:"雷雨(激しい雹)"};
 const DIR16=["北","北北東","北東","東北東","東","東南東","南東","南南東","南","南南西","南西","西南西","西","西北西","北西","北北西"];
 const WJA="日月火水木金土";
-const IDX={A:'<span class="b b-a">A◎</span>',B:'<span class="b b-b">B△</span>',C:'<span class="b b-c">C✕</span>'};
+const IDX={A:'<span class="b b-a">A</span>',B:'<span class="b b-b">B</span>',C:'<span class="b b-c">C</span>'};
 const VCLS={"◎":"v-ex","○":"v-ok","△":"v-so","✕":"v-ng"};
 
 const wdir=d=>d==null?"-":DIR16[Math.floor(((d+11.25)%360)/22.5)];
@@ -182,13 +182,21 @@ function viewScore(elev,low,mid,pr3,vis){
 const vhtml=([v,n])=>`<span class="${VCLS[v]}">${v}${n?`(${n})`:""}</span>`;
 
 // ---- APIアクセス (リトライつき) ----
+// 予報モデルの更新時刻によっては end_date が16日先まで受け付けられず HTTP 400 になるため、
+// その場合は応答の reason から許容最終日をパースして end_date を縮め、1回だけ再試行する
 async function apiJson(url,params,retries=3){
-  const q=new URLSearchParams(params).toString();
-  let lastErr;
+  let lastErr,clamped=false;
   for(let a=1;a<=retries;a++){
     try{
-      const r=await fetch(`${url}?${q}`);
+      const r=await fetch(`${url}?${new URLSearchParams(params)}`);
       if(!r.ok){
+        if(r.status===400&&!clamped){
+          const reason=(await r.json().catch(()=>({}))).reason||"";
+          const m=reason.match(/'end_date'.* to (\d{4}-\d{2}-\d{2})/);
+          if(m&&(params.start_date||"")<=m[1]&&m[1]<(params.end_date||"")){
+            params={...params,end_date:m[1]};clamped=true;a--;continue; // 再試行回数は消費しない
+          }
+        }
         if(r.status<500)throw Object.assign(new Error(`HTTP ${r.status}`),{fatal:true});
         throw new Error(`HTTP ${r.status}`);
       }
@@ -252,7 +260,8 @@ async function run(mt){
       (${mt.geo?"地名検索: 標高はグリッド値で山頂より低いことがあります":"内蔵DB"})</li>
     <li>稜線風: ${lo[0]===hi[0]?lo[0]+"hPa":lo[0]+"/"+hi[0]+"hPa補間"} / 気温は標高${Math.round(mt.elev)}m面 /
       体感温度 = 風冷指数 (JAG/TI式。風速4.8km/h未満は気温をそのまま採用)</li>
-    <li>登山指数: ${seasonTh(start.getMonth()+1).mode}モード基準
+    <li>登山指数: <span class="b b-a">A</span>=登山適 / <span class="b b-b">B</span>=要注意(経験者向き・行程短縮検討) / <span class="b b-c">C</span>=登山不適。
+      ${seasonTh(start.getMonth()+1).mode}モード基準
       (風 ${seasonTh(start.getMonth()+1).wind.join("/")}m/s・降水 ${seasonTh(start.getMonth()+1).precip.join("/")}mm/3h・CAPE 500/1000)。
       夏山=6〜10月/冬山・残雪期=11〜5月を対象日の月で自動切替。降水確率は参考表示</li></ul>`;
 
