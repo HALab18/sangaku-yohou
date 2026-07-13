@@ -93,14 +93,12 @@ footer a{color:var(--accent)}
     <input id="mname" placeholder="例: 燕岳" required autocomplete="off">
     <div id="sugg" hidden></div>
   </label>
-  <label>開始日
+  <label>開始日（詳細表示）
     <input type="date" id="mdate">
   </label>
-  <label>日数
-    <select id="mdays"><option>1</option><option selected>2</option><option>3</option></select>
+  <label>表示間隔
+    <select id="mstep"><option value="3" selected>3時間ごと</option><option value="1">1時間ごと</option></select>
   </label>
-  <label class="chk"><input type="checkbox" id="mweekly">16日見通し</label>
-  <label class="chk"><input type="checkbox" id="mmodels">モデル比較</label>
   <button id="go" type="submit">予報を見る</button>
 </form>
 
@@ -248,16 +246,15 @@ function dayIdx(times,dstr){const out=[];for(let i=0;i<times.length;i++)if(times
 
 async function run(mt){
   const status=document.getElementById("status"),out=document.getElementById("out");
-  const weekly=document.getElementById("mweekly").checked;
-  const compare=document.getElementById("mmodels").checked;
-  const days=+document.getElementById("mdays").value||2;
+  const step=+document.getElementById("mstep").value===1?1:3;
+  const days=4;
   const today=new Date();today.setHours(0,0,0,0);
   const horizon=addDays(today,15);
   let start=document.getElementById("mdate").value?new Date(document.getElementById("mdate").value+"T00:00"):today;
   if(start<today)start=today;
   if(start>horizon){status.className="err";status.textContent=`予報範囲外です(最長16日先=${iso(horizon)}まで)`;return}
   const detailEnd=new Date(Math.min(addDays(start,days-1),horizon));
-  const fetchEnd=weekly?horizon:new Date(Math.min(Math.max(+addDays(today,6),+detailEnd),+horizon));
+  const fetchEnd=horizon;
 
   const[lo,hi,t]=bracket(mt.elev);
   const levels=lo[0]===hi[0]?[lo]:[lo,hi];
@@ -356,7 +353,7 @@ async function run(mt){
       sf:d.snowfall_sum?.[di],depth:dep.length?Math.max(...dep):null,
       view:best?vhtml(best):"-"});
   }
-  htmlOut+=`<h2>${weekly?"16日間の見通し":"日別サマリ"}</h2><div class="tbl"><table>
+  htmlOut+=`<h2>16日間の見通し</h2><div class="tbl"><table>
     <tr><th>日付</th><th>指数</th><th>天気</th><th>眺望(朝)</th><th>山頂気温</th><th>稜線風max(5-17時)</th><th>降水量</th><th>降水%(参考)</th>${hasSnow?"<th>積雪max(新雪)</th>":""}</tr>`;
   for(const r of rows)htmlOut+=`<tr><td>${md(r.d)}${wj(r.d)}</td><td>${IDX[r.idx]}${r.eve?'<span class="ew"> ⚠夕方</span>':""}</td><td>${wcode(r.code)}</td>
     <td>${r.view}</td><td>${f0(r.tmin)}〜${f0(r.tmax)}℃</td><td>${wdir(r.wd)} ${f1(r.ws)}m/s</td>
@@ -364,16 +361,16 @@ async function run(mt){
   htmlOut+=`</table></div>`;
   if(rows.some(r=>r.eve))htmlOut+=`<p class="ewnote">⚠夕方: 17〜20時に天候の急変(C相当)が予想されます。日中の指数には含めていませんが、下山遅れ・テント泊・ご来光待ちの際は特に注意してください。</p>`;
 
-  // 3時間ごと詳細
+  // 詳細 (表示間隔 step=3 or 1)
   for(let dt2=new Date(start);dt2<=detailEnd;dt2=addDays(dt2,1)){
     const ds=iso(dt2),idxs=dayIdx(times,ds);if(!idxs.length)continue;
     const di=d.time.indexOf(ds);
     const sun=di>=0&&d.sunrise?.[di]?` (日の出${d.sunrise[di].slice(11,16)} / 日の入${d.sunset[di].slice(11,16)})`:"";
     const thD=seasonTh(dt2.getMonth()+1);
-    htmlOut+=`<h2>${ds} ${wj(dt2)} 3時間ごと詳細${sun}</h2><div class="tbl"><table>
+    htmlOut+=`<h2>${ds} ${wj(dt2)} ${step===1?"1時間ごと":"3時間ごと"}詳細${sun}</h2><div class="tbl"><table>
       <tr><th>時刻</th><th>指数</th><th>天気</th><th>眺望</th><th>気温</th><th>体感</th><th>稜線風</th><th>突風</th><th>降水</th><th>降水%(参考)</th><th>雷CAPE</th><th>雲(下/中/上)</th><th>視程</th>${hasSnow?"<th>積雪(新雪)</th>":""}</tr>`;
-    for(let sh=0;sh<24;sh+=3){
-      const blk=idxs.filter(i=>Math.floor(+times[i].slice(11,13)/3)*3===sh);
+    for(let sh=0;sh<24;sh+=step){
+      const blk=idxs.filter(i=>Math.floor(+times[i].slice(11,13)/step)*step===sh);
       if(!blk.length)continue;
       const i0=blk[0],temp=h.temperature_2m[i0];
       const rw=blk.map(i=>ridgeWind(h,i,lo,hi,t));
@@ -390,10 +387,19 @@ async function run(mt){
       const visArr=blk.map(i=>h.visibility?.[i]).filter(v=>v!=null);
       const vis=visArr.length?Math.min(...visArr):null;
       const feel=feelsLike(temp,ws);
-      const view=vhtml(viewScore(mt.elev,h.cloud_cover_low[i0],h.cloud_cover_mid[i0],pr,vis));
+      const view=vhtml(viewScore(mt.elev,h.cloud_cover_low[i0],h.cloud_cover_mid[i0],pr*3/step,vis));
       const cl=`${f0(h.cloud_cover_low[i0])}/${f0(h.cloud_cover_mid[i0])}/${f0(h.cloud_cover_high[i0])}%`;
       const visTxt=vis==null?"-":vis>=1000?`${Math.round(vis/1000)}km`:`${Math.round(vis)}m`;
-      const bi=blockIndex(ws,pr,cape,thD);
+      // 指数は表示間隔によらず3時間ブロック単位で判定する (A/B/Cの降水閾値がmm/3h定義のため)
+      const sh3=Math.floor(sh/3)*3;
+      const blk3=idxs.filter(i=>Math.floor(+times[i].slice(11,13)/3)*3===sh3);
+      const rw3=blk3.map(i=>ridgeWind(h,i,lo,hi,t));
+      const ws3Arr=rw3.map(x=>x[0]).filter(v=>v!=null);
+      const ws3=ws3Arr.length?Math.max(...ws3Arr):null;
+      const pr3=blk3.reduce((s,i)=>s+(h.precipitation[i]||0),0);
+      const cape3Arr=blk3.map(i=>h.cape?.[i]).filter(v=>v!=null);
+      const cape3=cape3Arr.length?Math.max(...cape3Arr):null;
+      const bi=blockIndex(ws3,pr3,cape3,thD);
       const depArr=blk.map(i=>h.snow_depth?.[i]).filter(v=>v!=null);
       const sfBlk=blk.reduce((s,i)=>s+(h.snowfall?.[i]||0),0);
       htmlOut+=`<tr><td>${String(sh).padStart(2,"0")}時</td><td>${IDX[bi]}</td><td>${wcode(h.weather_code[i0])}</td><td>${view}</td>
@@ -404,10 +410,10 @@ async function run(mt){
     htmlOut+=`</table></div>`;
   }
 
-  // モデル比較
-  if(compare){
+  // モデル比較 (常時表示)
+  {
     status.textContent="モデル比較を取得中…";
-    const cmpEnd=new Date(Math.min(+detailEnd,+addDays(start,2)));
+    const cmpEnd=detailEnd;
     const models=["jma_seamless","ecmwf_ifs025","gfs_seamless"];
     const labels={jma_seamless:"気象庁JMA",ecmwf_ifs025:"欧州ECMWF",gfs_seamless:"米国GFS"};
     const cd=await apiJson("https://api.open-meteo.com/v1/forecast",{
@@ -438,8 +444,7 @@ async function run(mt){
     <a href="https://tenki.jp/mountain/">tenki.jp山の天気</a>等）と現地の状況で行ってください。</div>`;
   out.innerHTML=htmlOut;
   status.textContent="";
-  const flags=(weekly?"w":"")+(compare?"m":"");
-  location.hash=encodeURIComponent(mt.name)+"/"+iso(start)+"/"+days+(flags?"/"+flags:"");
+  location.hash=encodeURIComponent(mt.name)+"/"+iso(start)+(step===1?"/1h":"");
 }
 
 // ---- フォーム制御 ----
@@ -483,16 +488,13 @@ const AGREE_KEY="sangaku-yohou-agreed-v1";
 function applyHash(){
   const hash=decodeURIComponent(location.hash.slice(1));
   if(!hash)return;
-  const[nm,dt2,dy,wk]=hash.split("/");
+  // 形式: 山名/日付[/1h] (旧形式 山名/日付/日数/フラグ の余分なセグメントは無視)
+  const[nm,dt2,seg3]=hash.split("/");
   if(!nm)return;
   document.getElementById("mname").value=nm;
   const di=document.getElementById("mdate");
   if(dt2)di.value=dt2;
-  if(dy)document.getElementById("mdays").value=Math.min(3,Math.max(1,parseInt(dy,10)||2));
-  if(wk){
-    if(wk.includes("w"))document.getElementById("mweekly").checked=true;
-    if(wk.includes("m"))document.getElementById("mmodels").checked=true;
-  }
+  if(seg3==="1h")document.getElementById("mstep").value="1";
   const f=document.getElementById("f");
   if(f.requestSubmit)f.requestSubmit();else f.dispatchEvent(new Event("submit",{cancelable:true}));
 }
