@@ -324,7 +324,7 @@ def snow_cell(depth_m, sf_cm):
 
 # ---------------------------------------------------------------- 直近実況
 def past_summary_rows(data, dates, lo, hi, t):
-    """直近数日の実況(モデル解析値)。登山道コンディション推定の材料"""
+    """直近数日の実況(モデル解析値)の日別行"""
     h, d = data["hourly"], data["daily"]
     times = h["time"]
     depth_all = h.get("snow_depth") or []
@@ -350,38 +350,10 @@ def past_summary_rows(data, dates, lo, hi, t):
     return rows
 
 
-def trail_hints(rows):
-    """直近実況から登山道コンディションの目安を組み立てる(表示のみ・A/B/C判定には使わない)。
-    降水合計 5/20/50mm・降雪 1/20cm を目安の境目とする"""
-    n = len(rows)
-    pr3 = sum(r["pr"] or 0 for r in rows)
-    sf3 = sum(r["sf"] or 0 for r in rows)
-    hints = []
-    if pr3 >= 50:
-        hints.append(f"直近{n}日で降水{pr3:.0f}mm: ぬかるみに加え増水・渡渉困難のおそれ。"
-                     f"沢沿い・徒渉のあるルートは現地の最新情報を確認")
-    elif pr3 >= 20:
-        hints.append(f"直近{n}日で降水{pr3:.0f}mm: ぬかるみ・スリップ、沢の増水に注意")
-    elif pr3 >= 5:
-        hints.append(f"直近{n}日で降水{pr3:.0f}mm: 路面は湿り気味の見込み")
-    else:
-        hints.append(f"直近{n}日の降水{pr3:.0f}mm: 路面は比較的乾いている見込み")
-    if sf3 >= 20:
-        hints.append(f"直近{n}日で降雪{sf3:.0f}cm: 新雪多量。ラッセル・雪崩地形に注意")
-    elif sf3 >= 1:
-        hints.append(f"直近{n}日で降雪{sf3:.0f}cm: 新雪あり。チェーンスパイク等の滑り止めを検討")
-    depth_now = rows[-1]["depth"] if rows else None
-    if depth_now is not None and depth_now >= 0.01:
-        hints.append(f"積雪が残っています(前日時点 約{depth_now * 100:.0f}cm): 残雪・凍結箇所に注意")
-    if any(r["tmin"] is not None and r["tmax"] is not None and r["tmin"] < 0 < r["tmax"] for r in rows):
-        hints.append("山頂気温が0℃を跨いだ日あり: 融解と再凍結で朝晩はアイスバーンになりやすい")
-    return hints
-
-
 def print_past_summary(rows, has_snow):
     if not rows:
         return
-    print(f"\n### 直近の実況(モデル解析値・過去{len(rows)}日) — 登山道コンディションの目安")
+    print(f"\n### 直近の実況(モデル解析値・過去{len(rows)}日)")
     snow_h = " 積雪max(新雪) |" if has_snow else ""
     snow_sep = "---|" if has_snow else ""
     print(f"| 日付 | 天気 | 山頂気温 | 稜線風max(5-17時) | 降水量 |{snow_h} 凍結高度min |")
@@ -393,10 +365,7 @@ def print_past_summary(rows, has_snow):
               f"| {fnum(r['tmin'], '{:.0f}')}〜{fnum(r['tmax'], '{:.0f}')}℃ "
               f"| {wdir(r['wd'])} {fnum(r['ws'], '{:.1f}')}m/s "
               f"| {fnum(r['pr'], '{:.1f}')}mm |{snow_c} {fnum(r['fl'])}m |")
-    for line in trail_hints(rows):
-        print(f"- {line}")
-    print("- ※実況はモデル解析値(観測所の実測ではない)。実際の路面・残雪・沢の状況は"
-          "山小屋・自治体等の現地情報を優先してください")
+    print("- ※モデル解析値であり観測所の実測ではありません。現地の最新情報を優先してください")
 
 
 # ---------------------------------------------------------------- 出力

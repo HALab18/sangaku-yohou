@@ -199,23 +199,6 @@ function snowCell(depthM,sfCm){
   if(sfCm!=null&&sfCm>=0.5)s+=`(+${Math.round(sfCm)})`;
   return s;
 }
-function trailHints(rows){
-  // 直近実況から登山道コンディションの目安(表示のみ・A/B/C判定には使わない)。閾値は references/criteria.md
-  const n=rows.length;
-  const pr3=rows.reduce((s,r)=>s+(r.pr||0),0);
-  const sf3=rows.reduce((s,r)=>s+(r.sf||0),0);
-  const hints=[];
-  if(pr3>=50)hints.push(`直近${n}日で降水${Math.round(pr3)}mm: ぬかるみに加え増水・渡渉困難のおそれ。沢沿い・徒渉のあるルートは現地の最新情報を確認`);
-  else if(pr3>=20)hints.push(`直近${n}日で降水${Math.round(pr3)}mm: ぬかるみ・スリップ、沢の増水に注意`);
-  else if(pr3>=5)hints.push(`直近${n}日で降水${Math.round(pr3)}mm: 路面は湿り気味の見込み`);
-  else hints.push(`直近${n}日の降水${Math.round(pr3)}mm: 路面は比較的乾いている見込み`);
-  if(sf3>=20)hints.push(`直近${n}日で降雪${Math.round(sf3)}cm: 新雪多量。ラッセル・雪崩地形に注意`);
-  else if(sf3>=1)hints.push(`直近${n}日で降雪${Math.round(sf3)}cm: 新雪あり。チェーンスパイク等の滑り止めを検討`);
-  const depthNow=n?rows[n-1].depth:null;
-  if(depthNow!=null&&depthNow>=0.01)hints.push(`積雪が残っています(前日時点 約${Math.round(depthNow*100)}cm): 残雪・凍結箇所に注意`);
-  if(rows.some(r=>r.tmin!=null&&r.tmax!=null&&r.tmin<0&&r.tmax>0))hints.push("山頂気温が0℃を跨いだ日あり: 融解と再凍結で朝晩はアイスバーンになりやすい");
-  return hints;
-}
 
 // ---- APIアクセス (リトライつき) ----
 // 予報モデルの更新時刻によっては end_date が16日先まで受け付けられず HTTP 400 になるため、
@@ -303,7 +286,7 @@ async function run(mt){
       (風 ${seasonTh(start.getMonth()+1).wind.join("/")}m/s・降水 ${seasonTh(start.getMonth()+1).precip.join("/")}mm/3h・CAPE 500/1000)。
       夏山=6〜10月/冬山・残雪期=11〜5月を対象日の月で自動切替。降水確率は参考表示</li></ul>`;
 
-  // 直近実況(モデル解析値・過去3日) — 登山道コンディションの目安
+  // 直近実況(モデル解析値・過去3日)
   const pastRows=[];
   for(let dt2=addDays(today,-PAST_DAYS);dt2<today;dt2=addDays(dt2,1)){
     const ds=iso(dt2),di=d.time.indexOf(ds);if(di<0)continue;
@@ -320,13 +303,12 @@ async function run(mt){
       depth:dep.length?Math.max(...dep):null,fl:fls.length?Math.min(...fls):null});
   }
   if(pastRows.length){
-    htmlOut+=`<h2>直近の実況(モデル解析値・過去${pastRows.length}日) — 登山道コンディションの目安</h2><div class="tbl"><table>
+    htmlOut+=`<h2>直近の実況(モデル解析値・過去${pastRows.length}日)</h2><div class="tbl"><table>
       <tr><th>日付</th><th>天気</th><th>山頂気温</th><th>稜線風max(5-17時)</th><th>降水量</th>${hasSnow?"<th>積雪max(新雪)</th>":""}<th>凍結高度min</th></tr>`;
     for(const r of pastRows)htmlOut+=`<tr><td>${md(r.d)}${wj(r.d)}</td><td>${wcode(r.code)}</td>
       <td>${f0(r.tmin)}〜${f0(r.tmax)}℃</td><td>${wdir(r.wd)} ${f1(r.ws)}m/s</td>
       <td>${r.pr==null?"-":r.pr.toFixed(1)}mm</td>${hasSnow?`<td>${snowCell(r.depth,r.sf)}</td>`:""}<td>${f0(r.fl)}m</td></tr>`;
-    htmlOut+=`</table></div><ul class="meta">${trailHints(pastRows).map(x=>`<li>${x}</li>`).join("")}
-      <li>※実況はモデル解析値(観測所の実測ではない)。実際の路面・残雪・沢の状況は山小屋・自治体等の現地情報を優先してください</li></ul>`;
+    htmlOut+=`</table></div><ul class="meta"><li>※モデル解析値であり観測所の実測ではありません。現地の最新情報を優先してください</li></ul>`;
   }
 
   // 日別サマリ
