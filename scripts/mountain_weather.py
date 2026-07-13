@@ -277,14 +277,15 @@ def fetch_forecast(lat, lon, elev, start, end, levels):
     hourly = ["temperature_2m", "precipitation", "precipitation_probability",
               "weather_code", "cloud_cover_low", "cloud_cover_mid", "cloud_cover_high",
               "wind_speed_10m", "wind_gusts_10m",
-              "freezing_level_height", "cape", "visibility"]
+              "freezing_level_height", "cape", "visibility",
+              "snow_depth", "snowfall"]
     for p, _ in levels:
         hourly += [f"wind_speed_{p}hPa", f"wind_direction_{p}hPa"]
     params = {
         "latitude": lat, "longitude": lon, "elevation": elev,
         "hourly": ",".join(dict.fromkeys(hourly)),
         "daily": "weather_code,temperature_2m_max,temperature_2m_min,"
-                 "precipitation_sum,precipitation_probability_max,sunrise,sunset",
+                 "precipitation_sum,snowfall_sum,precipitation_probability_max,sunrise,sunset",
         "timezone": "Asia/Tokyo", "wind_speed_unit": "ms",
         "start_date": start.isoformat(), "end_date": end.isoformat(),
     }
@@ -300,8 +301,106 @@ def fnum(v, fmt="{:.0f}", none="-"):
     return none if v is None else fmt.format(v)
 
 
+PAST_DAYS = 3  # 直近実況(モデル解析値)として遡る日数
+
+
+def has_snow_period(h):
+    """取得期間内に積雪・降雪が一度でもあるか。無ければ各表の積雪列自体を省略して夏山の表を簡潔に保つ"""
+    depth = h.get("snow_depth") or []
+    fall = h.get("snowfall") or []
+    return (any(v is not None and v >= 0.01 for v in depth)
+            or any(v is not None and v >= 0.1 for v in fall))
+
+
+def snow_cell(depth_m, sf_cm):
+    """積雪列の表示。「85cm(+12)」= 積雪深85cm・新雪12cm"""
+    if depth_m is None and sf_cm is None:
+        return "-"
+    txt = "-" if depth_m is None else f"{depth_m * 100:.0f}cm"
+    if sf_cm is not None and sf_cm >= 0.5:
+        txt += f"(+{sf_cm:.0f})"
+    return txt
+
+
+# ---------------------------------------------------------------- 直近実況
+def past_summary_rows(data, dates, lo, hi, t):
+    """直近数日の実況(モデル解析値)。登山道コンディション推定の材料"""
+    h, d = data["hourly"], data["daily"]
+    times = h["time"]
+    depth_all = h.get("snow_depth") or []
+    sf_all = d.get("snowfall_sum") or [None] * len(d["time"])
+    rows = []
+    for date in dates:
+        try:
+            di = d["time"].index(date.isoformat())
+        except ValueError:
+            continue
+        idxs = day_indices(times, date)
+        act = [i for i in idxs if 5 <= int(times[i][11:13]) <= 17]
+        rws = [ridge_wind(h, i, lo, hi, t) for i in act]
+        ws = max((s for s, _ in rws if s is not None), default=None)
+        wd = next((dd for s, dd in rws if s == ws), None)
+        fls = [h["freezing_level_height"][i] for i in idxs if h["freezing_level_height"][i] is not None]
+        depth = max((depth_all[i] for i in idxs if i < len(depth_all) and depth_all[i] is not None),
+                    default=None)
+        rows.append({"date": date, "code": d["weather_code"][di],
+                     "tmin": d["temperature_2m_min"][di], "tmax": d["temperature_2m_max"][di],
+                     "ws": ws, "wd": wd, "pr": d["precipitation_sum"][di], "sf": sf_all[di],
+                     "depth": depth, "fl": min(fls) if fls else None})
+    return rows
+
+
+def trail_hints(rows):
+    """直近実況から登山道コンディションの目安を組み立てる(表示のみ・A/B/C判定には使わない)。
+    降水合計 5/20/50mm・降雪 1/20cm を目安の境目とする"""
+    n = len(rows)
+    pr3 = sum(r["pr"] or 0 for r in rows)
+    sf3 = sum(r["sf"] or 0 for r in rows)
+    hints = []
+    if pr3 >= 50:
+        hints.append(f"直近{n}日で降水{pr3:.0f}mm: ぬかるみに加え増水・渡渉困難のおそれ。"
+                     f"沢沿い・徒渉のあるルートは現地の最新情報を確認")
+    elif pr3 >= 20:
+        hints.append(f"直近{n}日で降水{pr3:.0f}mm: ぬかるみ・スリップ、沢の増水に注意")
+    elif pr3 >= 5:
+        hints.append(f"直近{n}日で降水{pr3:.0f}mm: 路面は湿り気味の見込み")
+    else:
+        hints.append(f"直近{n}日の降水{pr3:.0f}mm: 路面は比較的乾いている見込み")
+    if sf3 >= 20:
+        hints.append(f"直近{n}日で降雪{sf3:.0f}cm: 新雪多量。ラッセル・雪崩地形に注意")
+    elif sf3 >= 1:
+        hints.append(f"直近{n}日で降雪{sf3:.0f}cm: 新雪あり。チェーンスパイク等の滑り止めを検討")
+    depth_now = rows[-1]["depth"] if rows else None
+    if depth_now is not None and depth_now >= 0.01:
+        hints.append(f"積雪が残っています(前日時点 約{depth_now * 100:.0f}cm): 残雪・凍結箇所に注意")
+    if any(r["tmin"] is not None and r["tmax"] is not None and r["tmin"] < 0 < r["tmax"] for r in rows):
+        hints.append("山頂気温が0℃を跨いだ日あり: 融解と再凍結で朝晩はアイスバーンになりやすい")
+    return hints
+
+
+def print_past_summary(rows, has_snow):
+    if not rows:
+        return
+    print(f"\n### 直近の実況(モデル解析値・過去{len(rows)}日) — 登山道コンディションの目安")
+    snow_h = " 積雪max(新雪) |" if has_snow else ""
+    snow_sep = "---|" if has_snow else ""
+    print(f"| 日付 | 天気 | 山頂気温 | 稜線風max(5-17時) | 降水量 |{snow_h} 凍結高度min |")
+    print(f"|---|---|---|---|---|{snow_sep}---|")
+    for r in rows:
+        wj = "月火水木金土日"[r["date"].weekday()]
+        snow_c = f" {snow_cell(r['depth'], r['sf'])} |" if has_snow else ""
+        print(f"| {r['date'].strftime('%m/%d')}({wj}) | {wcode(r['code'])} "
+              f"| {fnum(r['tmin'], '{:.0f}')}〜{fnum(r['tmax'], '{:.0f}')}℃ "
+              f"| {wdir(r['wd'])} {fnum(r['ws'], '{:.1f}')}m/s "
+              f"| {fnum(r['pr'], '{:.1f}')}mm |{snow_c} {fnum(r['fl'])}m |")
+    for line in trail_hints(rows):
+        print(f"- {line}")
+    print("- ※実況はモデル解析値(観測所の実測ではない)。実際の路面・残雪・沢の状況は"
+          "山小屋・自治体等の現地情報を優先してください")
+
+
 # ---------------------------------------------------------------- 出力
-def print_detail_day(data, date, lo, hi, t, elev):
+def print_detail_day(data, date, lo, hi, t, elev, has_snow=False):
     h = data["hourly"]
     times = h["time"]
     idxs = day_indices(times, date)
@@ -316,9 +415,13 @@ def print_detail_day(data, date, lo, hi, t, elev):
     except (ValueError, KeyError):
         pass
     th = season_thresholds(date.month)
+    depth_all = h.get("snow_depth") or []
+    sfh_all = h.get("snowfall") or []
+    snow_h = " 積雪(新雪) |" if has_snow else ""
+    snow_sep = "---|" if has_snow else ""
     print(f"\n### {date.isoformat()} ({'月火水木金土日'[date.weekday()]}) 3時間ごと詳細{suntxt}")
-    print("| 時刻 | 指数 | 天気 | 眺望 | 気温 | 体感 | 稜線風 | 突風 | 降水 | 降水%(参考) | 雷CAPE | 雲(下/中/上) | 視程 | 凍結高度 |")
-    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    print(f"| 時刻 | 指数 | 天気 | 眺望 | 気温 | 体感 | 稜線風 | 突風 | 降水 | 降水%(参考) | 雷CAPE | 雲(下/中/上) | 視程 |{snow_h} 凍結高度 |")
+    print(f"|---|---|---|---|---|---|---|---|---|---|---|---|---|{snow_sep}---|")
     for start_h in range(0, 24, 3):
         block = [i for i in idxs if int(times[i][11:13]) // 3 * 3 == start_h]
         if not block:
@@ -343,9 +446,15 @@ def print_detail_day(data, date, lo, hi, t, elev):
         vw_txt = vw + (f"({note})" if note else "")
         vis_txt = "-" if vis is None else (f"{vis / 1000:.0f}km" if vis >= 1000 else f"{vis:.0f}m")
         bi = block_index(ws, pr, cape, th)
+        snow_c = ""
+        if has_snow:
+            depth = max((depth_all[i] for i in block if i < len(depth_all) and depth_all[i] is not None),
+                        default=None)
+            sf_blk = sum(sfh_all[i] or 0 for i in block if i < len(sfh_all))
+            snow_c = f" {snow_cell(depth, sf_blk)} |"
         print(f"| {start_h:02d}時 | {IDX_MARK[bi]} | {wcode(h['weather_code'][i0])} | {vw_txt} | {fnum(temp, '{:.1f}')}℃ "
               f"| {fnum(feel, '{:.0f}')}℃ | {wdir(wd)} {fnum(ws, '{:.1f}')}m/s | {fnum(gust, '{:.0f}')}m/s "
-              f"| {pr:.1f}mm | {fnum(prob)}% | {fnum(cape)} | {cl} | {vis_txt} | {fnum(fl)}m |")
+              f"| {pr:.1f}mm | {fnum(prob)}% | {fnum(cape)} | {cl} | {vis_txt} |{snow_c} {fnum(fl)}m |")
 
 
 def morning_view(h, times, idxs, elev):
@@ -372,6 +481,8 @@ def daily_summary_rows(data, dates, lo, hi, t, elev):
     h = data["hourly"]
     d = data["daily"]
     times = h["time"]
+    depth_all = h.get("snow_depth") or []
+    sf_all = d.get("snowfall_sum") or [None] * len(d["time"])
     rows = []
     for date in dates:
         try:
@@ -408,28 +519,34 @@ def daily_summary_rows(data, dates, lo, hi, t, elev):
             cape_e = max((h["cape"][i] for i in eve if h["cape"][i] is not None), default=None)
             evening = block_index(ws_e, pr_e, cape_e, th) == "C"
         fls = [h["freezing_level_height"][i] for i in idxs if h["freezing_level_height"][i] is not None]
+        depth = max((depth_all[i] for i in idxs if i < len(depth_all) and depth_all[i] is not None),
+                    default=None)
         rows.append({
             "date": date, "idx": day_idx, "evening": evening, "code": d["weather_code"][di],
             "tmin": d["temperature_2m_min"][di], "tmax": d["temperature_2m_max"][di],
             "ws": ws_max, "wd": wd_max,
             "pr": d["precipitation_sum"][di], "prob": d["precipitation_probability_max"][di],
+            "sf": sf_all[di], "depth": depth,
             "fl": min(fls) if fls else None,
             "view": morning_view(h, times, idxs, elev),
         })
     return rows
 
 
-def print_daily_summary(rows, title):
+def print_daily_summary(rows, title, has_snow=False):
     print(f"\n### {title}")
-    print("| 日付 | 指数 | 天気 | 眺望(朝) | 山頂気温 | 稜線風max(5-17時) | 降水量 | 降水%(参考) | 凍結高度min |")
-    print("|---|---|---|---|---|---|---|---|---|")
+    snow_h = " 積雪max(新雪) |" if has_snow else ""
+    snow_sep = "---|" if has_snow else ""
+    print(f"| 日付 | 指数 | 天気 | 眺望(朝) | 山頂気温 | 稜線風max(5-17時) | 降水量 | 降水%(参考) |{snow_h} 凍結高度min |")
+    print(f"|---|---|---|---|---|---|---|---|{snow_sep}---|")
     for r in rows:
         wj = "月火水木金土日"[r["date"].weekday()]
         mark = IDX_MARK[r["idx"]] + (" ⚠夕方" if r.get("evening") else "")
+        snow_c = f" {snow_cell(r.get('depth'), r.get('sf'))} |" if has_snow else ""
         print(f"| {r['date'].strftime('%m/%d')}({wj}) | {mark} | {wcode(r['code'])} "
               f"| {r['view']} | {fnum(r['tmin'], '{:.0f}')}〜{fnum(r['tmax'], '{:.0f}')}℃ "
               f"| {wdir(r['wd'])} {fnum(r['ws'], '{:.1f}')}m/s "
-              f"| {fnum(r['pr'], '{:.1f}')}mm | {fnum(r['prob'])}% | {fnum(r['fl'])}m |")
+              f"| {fnum(r['pr'], '{:.1f}')}mm | {fnum(r['prob'])}% |{snow_c} {fnum(r['fl'])}m |")
     if any(r.get("evening") for r in rows):
         print("- ⚠夕方: 17〜20時に天候の急変(C相当)が予想されます。日中の指数には含めていませんが、"
               "下山遅れ・テント泊・ご来光待ちの際は特に注意してください。")
@@ -617,7 +734,7 @@ def main():
     else:
         start = today
     detail_end = min(start + dt.timedelta(days=max(args.days, 1) - 1), horizon)
-    fetch_start = today  # 週間サマリは常に今日から
+    fetch_start = today - dt.timedelta(days=PAST_DAYS)  # 直近実況ぶんを遡って取得
     fetch_end = horizon if args.weekly else min(max(today + dt.timedelta(days=6), detail_end), horizon)
 
     lo, hi, t = bracket_levels(elev)
@@ -636,15 +753,19 @@ def main():
         print(f"- 体感温度 = 風冷指数 (JAG/TI式。風速4.8km/h未満は気温をそのまま採用) "
               f"/ 取得: {dt.datetime.now():%Y-%m-%d %H:%M} / 出典: Open-Meteo")
 
-        n_days = (fetch_end - fetch_start).days + 1
-        dates = [fetch_start + dt.timedelta(days=i) for i in range(n_days)]
+        has_snow = has_snow_period(data["hourly"])
+        past_dates = [today - dt.timedelta(days=i) for i in range(PAST_DAYS, 0, -1)]
+        print_past_summary(past_summary_rows(data, past_dates, lo, hi, t), has_snow)
+
+        n_days = (fetch_end - today).days + 1
+        dates = [today + dt.timedelta(days=i) for i in range(n_days)]
         rows = daily_summary_rows(data, dates, lo, hi, t, elev)
         title = "16日間の見通し" if args.weekly else "日別サマリ"
-        print_daily_summary(rows, title)
+        print_daily_summary(rows, title, has_snow)
 
         d = start
         while d <= detail_end:
-            print_detail_day(data, d, lo, hi, t, elev)
+            print_detail_day(data, d, lo, hi, t, elev, has_snow)
             d += dt.timedelta(days=1)
 
         if args.compare_models:
