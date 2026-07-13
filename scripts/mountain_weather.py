@@ -107,11 +107,17 @@ def http_json(url, params, retries=3):
 
 # ---------------------------------------------------------------- 山名解決
 def load_csv():
-    rows = []
-    if MOUNTAINS_CSV.exists():
-        with open(MOUNTAINS_CSV, encoding="utf-8") as f:
-            rows = list(csv.DictReader(f))
-    return rows
+    """CSVはBOM付きUTF-8が標準(Excelでそのまま開ける)。utf-8-sigはBOM無しも読める。
+    ExcelがShift_JIS(CP932)で保存し直した場合にも読めるようフォールバックする"""
+    if not MOUNTAINS_CSV.exists():
+        return []
+    for enc in ("utf-8-sig", "cp932"):
+        try:
+            with open(MOUNTAINS_CSV, encoding=enc, newline="") as f:
+                return list(csv.DictReader(f))
+        except UnicodeDecodeError:
+            continue
+    sys.exit(f"ERROR: {MOUNTAINS_CSV} の文字コードが判別できません。UTF-8で保存し直してください。")
 
 
 def resolve_mountain(name, select=None):
@@ -142,13 +148,14 @@ def resolve_mountain(name, select=None):
     cands = mt or jp or results
     if not cands:
         sys.exit(f"ERROR: 「{name}」が見つかりませんでした。--lat/--lon/--elev で直接指定してください。")
-    if len(cands) > 1 and not select:
+    sel_ok = select is not None and 1 <= select <= len(cands)
+    if len(cands) > 1 and not sel_ok:
         print(f"「{name}」は複数候補があります(ジオコーディング)。--select N で選択してください:")
         for i, r in enumerate(cands, 1):
             print(f"  {i}. {r['name']}({r.get('admin1', '?')}{'/' + r['admin2'] if r.get('admin2') else ''}) "
                   f"標高{r.get('elevation', '?')}m [{r['latitude']:.4f}, {r['longitude']:.4f}]")
         sys.exit(2)
-    r = cands[(select or 1) - 1]
+    r = cands[select - 1] if sel_ok else cands[0]
     elev = r.get("elevation")
     if elev is None:
         sys.exit(f"ERROR: 標高情報が取得できません。--elev で指定してください。")
@@ -171,11 +178,14 @@ def bracket_levels(elev):
 
 
 def ridge_wind(h, i, lo, hi, t):
-    """i時刻の稜線風速(m/s)・風向を気圧面2面から補間"""
-    s_lo = h.get(f"wind_speed_{lo[0]}hPa", [None])[i]
-    s_hi = h.get(f"wind_speed_{hi[0]}hPa", [None])[i]
-    d_lo = h.get(f"wind_direction_{lo[0]}hPa", [None])[i]
-    d_hi = h.get(f"wind_direction_{hi[0]}hPa", [None])[i]
+    """i時刻の稜線風速(m/s)・風向を気圧面2面から補間。欠測・キー欠落は None 扱い"""
+    def val(key):
+        a = h.get(key)
+        return a[i] if a and i < len(a) else None
+    s_lo = val(f"wind_speed_{lo[0]}hPa")
+    s_hi = val(f"wind_speed_{hi[0]}hPa")
+    d_lo = val(f"wind_direction_{lo[0]}hPa")
+    d_hi = val(f"wind_direction_{hi[0]}hPa")
     if s_lo is None or s_hi is None:
         s = s_lo if s_lo is not None else s_hi
         d = d_lo if d_lo is not None else d_hi
@@ -455,8 +465,11 @@ def compare_models(lat, lon, elev, start, end):
             if not temps:
                 print(f"| {date.strftime('%m/%d')} | {labels[m]} | (データなし) | | | |")
                 continue
+            pr_txt = f"{sum(precs):.1f}mm" if precs else "-"
+            wind_txt = f"{max(winds):.1f}m/s" if winds else "-"
+            cloud_txt = f"{sum(clouds) / len(clouds):.0f}%" if clouds else "-"
             print(f"| {date.strftime('%m/%d')} | {labels[m]} | {min(temps):.0f}〜{max(temps):.0f}℃ "
-                  f"| {sum(precs):.1f}mm | {max(winds):.1f}m/s | {sum(clouds) / len(clouds):.0f}% |")
+                  f"| {pr_txt} | {wind_txt} | {cloud_txt} |")
         date += dt.timedelta(days=1)
 
 
