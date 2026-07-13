@@ -10,7 +10,7 @@
 **https://halab18.github.io/sangaku-yohou/**
 
 ブラウザで開いて山名を入れるだけ。スマホ対応、Python不要です。
-検索結果のURL（`#燕岳/2026-07-19/2` のような形式）はそのまま共有できます。
+検索結果のURL（`#燕岳/2026-07-19` のような形式）はそのまま共有できます。
 以下はコマンドライン版の説明です（機能・判定ロジックは同一）。
 
 ```
@@ -66,17 +66,14 @@ gitがない場合は GitHub の「Code → Download ZIP」で展開しても同
 ## 使い方
 
 ```
-# 基本: 今日から3日分の詳細 + 週間サマリ
+# 基本: 直近実況 + 16日間の見通し + 今日から4日分の詳細 + 3モデル比較 をまとめて表示
 python scripts/mountain_weather.py --name 燕岳
 
-# 日付を指定（例: 週末2日分）
-python scripts/mountain_weather.py --name 天狗岳 --date 2026-07-18 --days 2
+# 詳細表示の開始日を指定（例: 週末から4日分）
+python scripts/mountain_weather.py --name 天狗岳 --date 2026-07-18
 
-# 16日間の見通し（「来週登れそうな日は?」）
-python scripts/mountain_weather.py --name 谷川岳 --weekly
-
-# 3つの気象モデルを並べて予報の確度を確認
-python scripts/mountain_weather.py --name 富士山 --compare-models
+# 詳細を1時間ごとに表示（既定は3時間ごと）
+python scripts/mountain_weather.py --name 谷川岳 --interval 1
 
 # HTMLレポートを保存してブラウザで開く
 python scripts/mountain_weather.py --name 燕岳 --html --open
@@ -89,10 +86,8 @@ python scripts/mountain_weather.py --lat 36.407 --lon 137.713 --elev 2763 --labe
 |---|---|
 | `--name 山名` | 山名で指定（内蔵DB→地名検索の順で解決） |
 | `--select N` | 同名の山が複数あるとき候補一覧から番号で選択 |
-| `--date YYYY-MM-DD` | 対象日（省略時は今日から） |
-| `--days N` | 詳細表示する日数（既定3） |
-| `--weekly` | 16日間の日別見通し |
-| `--compare-models` | 気象庁JMA / 欧州ECMWF / 米国GFS の比較表 |
+| `--date YYYY-MM-DD` | 詳細表示の開始日（省略時は今日から4日分） |
+| `--interval 1` | 詳細を1時間ごとに表示（既定は3時間ごと） |
 | `--html [PATH]` | HTMLレポート保存（PATH省略時は自動命名） |
 | `--open` | 保存したHTMLをブラウザで開く |
 | `--lat --lon --elev --label` | 座標で直接指定 |

@@ -368,7 +368,7 @@ def print_past_summary(rows, has_snow):
 
 
 # ---------------------------------------------------------------- 出力
-def print_detail_day(data, date, lo, hi, t, elev, has_snow=False):
+def print_detail_day(data, date, lo, hi, t, elev, has_snow=False, step=3):
     h = data["hourly"]
     times = h["time"]
     idxs = day_indices(times, date)
@@ -387,11 +387,24 @@ def print_detail_day(data, date, lo, hi, t, elev, has_snow=False):
     sfh_all = h.get("snowfall") or []
     snow_h = " 積雪(新雪) |" if has_snow else ""
     snow_sep = "---|" if has_snow else ""
-    print(f"\n### {date.isoformat()} ({'月火水木金土日'[date.weekday()]}) 3時間ごと詳細{suntxt}")
+
+    def block_abc(start_h3):
+        """指数は表示間隔によらず3時間ブロック単位で判定 (A/B/Cの降水閾値がmm/3h定義のため)"""
+        blk3 = [i for i in idxs if int(times[i][11:13]) // 3 * 3 == start_h3]
+        if not blk3:
+            return "-"
+        rws3 = [ridge_wind(h, i, lo, hi, t) for i in blk3]
+        ws3 = max((s for s, _ in rws3 if s is not None), default=None)
+        pr3 = sum(h["precipitation"][i] or 0 for i in blk3)
+        cape3 = max((h["cape"][i] for i in blk3 if h["cape"][i] is not None), default=None)
+        return block_index(ws3, pr3, cape3, th)
+
+    print(f"\n### {date.isoformat()} ({'月火水木金土日'[date.weekday()]}) "
+          f"{'1時間ごと' if step == 1 else '3時間ごと'}詳細{suntxt}")
     print(f"| 時刻 | 指数 | 天気 | 眺望 | 気温 | 体感 | 稜線風 | 突風 | 降水 | 降水%(参考) | 雷CAPE | 雲(下/中/上) | 視程 |{snow_h}")
     print(f"|---|---|---|---|---|---|---|---|---|---|---|---|---|{snow_sep}")
-    for start_h in range(0, 24, 3):
-        block = [i for i in idxs if int(times[i][11:13]) // 3 * 3 == start_h]
+    for start_h in range(0, 24, step):
+        block = [i for i in idxs if int(times[i][11:13]) // step * step == start_h]
         if not block:
             continue
         i0 = block[0]
@@ -409,17 +422,17 @@ def print_detail_day(data, date, lo, hi, t, elev, has_snow=False):
         vis_all = h.get("visibility") or []
         vis = min((vis_all[i] for i in block if i < len(vis_all) and vis_all[i] is not None), default=None)
         vw, note = view_score(elev, h["cloud_cover_low"][i0], h["cloud_cover_mid"][i0],
-                              h["cloud_cover_high"][i0], pr, vis)
+                              h["cloud_cover_high"][i0], pr * 3 / step, vis)
         vw_txt = vw + (f"({note})" if note else "")
         vis_txt = "-" if vis is None else (f"{vis / 1000:.0f}km" if vis >= 1000 else f"{vis:.0f}m")
-        bi = block_index(ws, pr, cape, th)
+        bi = block_abc(start_h // 3 * 3)
         snow_c = ""
         if has_snow:
             depth = max((depth_all[i] for i in block if i < len(depth_all) and depth_all[i] is not None),
                         default=None)
             sf_blk = sum(sfh_all[i] or 0 for i in block if i < len(sfh_all))
             snow_c = f" {snow_cell(depth, sf_blk)} |"
-        print(f"| {start_h:02d}時 | {IDX_MARK[bi]} | {wcode(h['weather_code'][i0])} | {vw_txt} | {fnum(temp, '{:.1f}')}℃ "
+        print(f"| {start_h:02d}時 | {IDX_MARK.get(bi, '-')} | {wcode(h['weather_code'][i0])} | {vw_txt} | {fnum(temp, '{:.1f}')}℃ "
               f"| {fnum(feel, '{:.0f}')}℃ | {wdir(wd)} {fnum(ws, '{:.1f}')}m/s | {fnum(gust, '{:.0f}')}m/s "
               f"| {pr:.1f}mm | {fnum(prob)}% | {fnum(cape)} | {cl} | {vis_txt} |{snow_c}")
 
@@ -669,10 +682,14 @@ def main():
     ap.add_argument("--lon", type=float)
     ap.add_argument("--elev", type=float, help="山頂標高m (この高さの気象を出す)")
     ap.add_argument("--label", default="指定地点")
-    ap.add_argument("--date", help="対象日 YYYY-MM-DD (省略時は今日から)")
-    ap.add_argument("--days", type=int, default=3, help="詳細表示する日数 (既定3)")
-    ap.add_argument("--weekly", action="store_true", help="16日間の日別見通しを表示")
-    ap.add_argument("--compare-models", action="store_true", help="JMA/ECMWF/GFSモデル比較")
+    ap.add_argument("--date", help="詳細表示の開始日 YYYY-MM-DD (省略時は今日から)")
+    ap.add_argument("--interval", type=int, choices=[1, 3], default=3,
+                    help="詳細の表示間隔 (時間)。既定3、1で1時間ごと")
+    # 旧オプション。互換のため受け付けるが動作には影響しない
+    # (常に4日詳細・16日見通し・モデル比較を表示)
+    ap.add_argument("--days", type=int, default=None, help=argparse.SUPPRESS)
+    ap.add_argument("--weekly", action="store_true", help=argparse.SUPPRESS)
+    ap.add_argument("--compare-models", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--html", nargs="?", const="AUTO", metavar="PATH",
                     help="HTMLレポートも保存 (パス省略時はカレントに自動命名)")
     ap.add_argument("--open", action="store_true", help="--html 保存後にブラウザで開く")
@@ -698,9 +715,9 @@ def main():
             sys.exit(f"ERROR: {args.date} は過去日です。予報は本日以降のみ対応です。")
     else:
         start = today
-    detail_end = min(start + dt.timedelta(days=max(args.days, 1) - 1), horizon)
+    detail_end = min(start + dt.timedelta(days=3), horizon)  # 詳細は固定4日間
     fetch_start = today - dt.timedelta(days=PAST_DAYS)  # 直近実況ぶんを遡って取得
-    fetch_end = horizon if args.weekly else min(max(today + dt.timedelta(days=6), detail_end), horizon)
+    fetch_end = horizon  # 常に16日見通しを表示
 
     lo, hi, t = bracket_levels(elev)
     data = fetch_forecast(lat, lon, elev, fetch_start, fetch_end, {lo, hi})
@@ -725,16 +742,14 @@ def main():
         n_days = (fetch_end - today).days + 1
         dates = [today + dt.timedelta(days=i) for i in range(n_days)]
         rows = daily_summary_rows(data, dates, lo, hi, t, elev)
-        title = "16日間の見通し" if args.weekly else "日別サマリ"
-        print_daily_summary(rows, title, has_snow)
+        print_daily_summary(rows, "16日間の見通し", has_snow)
 
         d = start
         while d <= detail_end:
-            print_detail_day(data, d, lo, hi, t, elev, has_snow)
+            print_detail_day(data, d, lo, hi, t, elev, has_snow, step=args.interval)
             d += dt.timedelta(days=1)
 
-        if args.compare_models:
-            compare_models(lat, lon, elev, start, min(detail_end, start + dt.timedelta(days=2)))
+        compare_models(lat, lon, elev, start, detail_end)
 
         print("\n> ⚠️ 数値予報は山岳地形では誤差が大きく、局地的な突風・雷雨・視界不良は表現しきれません。"
               "登山指数は目安です。最終判断は最新の予報と現地の状況で行ってください。")
