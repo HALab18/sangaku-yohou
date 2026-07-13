@@ -131,6 +131,7 @@ const WMO={0:"快晴",1:"晴れ",2:"晴れ時々曇り",3:"曇り",45:"霧",48:"
  85:"にわか雪",86:"にわか雪(強)",95:"雷雨",96:"雷雨(雹)",99:"雷雨(激しい雹)"};
 const DIR16=["北","北北東","北東","東北東","東","東南東","南東","南南東","南","南南西","南西","西南西","西","西北西","北西","北北西"];
 const WJA="日月火水木金土";
+const PAST_DAYS=3; // 直近実況(モデル解析値)として遡る日数
 const IDX={A:'<span class="b b-a">A</span>',B:'<span class="b b-b">B</span>',C:'<span class="b b-c">C</span>'};
 const VCLS={"◎":"v-ex","○":"v-ok","△":"v-so","✕":"v-ng"};
 
@@ -191,6 +192,30 @@ function viewScore(elev,low,mid,pr3,vis){
   return["○",unkai?"雲海":""];
 }
 const vhtml=([v,n])=>`<span class="${VCLS[v]}">${v}${n?`(${n})`:""}</span>`;
+function snowCell(depthM,sfCm){
+  // 積雪列の表示。「85cm(+12)」= 積雪深85cm・新雪12cm
+  if(depthM==null&&sfCm==null)return"-";
+  let s=depthM==null?"-":`${Math.round(depthM*100)}cm`;
+  if(sfCm!=null&&sfCm>=0.5)s+=`(+${Math.round(sfCm)})`;
+  return s;
+}
+function trailHints(rows){
+  // 直近実況から登山道コンディションの目安(表示のみ・A/B/C判定には使わない)。閾値は references/criteria.md
+  const n=rows.length;
+  const pr3=rows.reduce((s,r)=>s+(r.pr||0),0);
+  const sf3=rows.reduce((s,r)=>s+(r.sf||0),0);
+  const hints=[];
+  if(pr3>=50)hints.push(`直近${n}日で降水${Math.round(pr3)}mm: ぬかるみに加え増水・渡渉困難のおそれ。沢沿い・徒渉のあるルートは現地の最新情報を確認`);
+  else if(pr3>=20)hints.push(`直近${n}日で降水${Math.round(pr3)}mm: ぬかるみ・スリップ、沢の増水に注意`);
+  else if(pr3>=5)hints.push(`直近${n}日で降水${Math.round(pr3)}mm: 路面は湿り気味の見込み`);
+  else hints.push(`直近${n}日の降水${Math.round(pr3)}mm: 路面は比較的乾いている見込み`);
+  if(sf3>=20)hints.push(`直近${n}日で降雪${Math.round(sf3)}cm: 新雪多量。ラッセル・雪崩地形に注意`);
+  else if(sf3>=1)hints.push(`直近${n}日で降雪${Math.round(sf3)}cm: 新雪あり。チェーンスパイク等の滑り止めを検討`);
+  const depthNow=n?rows[n-1].depth:null;
+  if(depthNow!=null&&depthNow>=0.01)hints.push(`積雪が残っています(前日時点 約${Math.round(depthNow*100)}cm): 残雪・凍結箇所に注意`);
+  if(rows.some(r=>r.tmin!=null&&r.tmax!=null&&r.tmin<0&&r.tmax>0))hints.push("山頂気温が0℃を跨いだ日あり: 融解と再凍結で朝晩はアイスバーンになりやすい");
+  return hints;
+}
 
 // ---- APIアクセス (リトライつき) ----
 // 予報モデルの更新時刻によっては end_date が16日先まで受け付けられず HTTP 400 になるため、
@@ -255,16 +280,18 @@ async function run(mt){
   const levels=lo[0]===hi[0]?[lo]:[lo,hi];
   const hourly=["temperature_2m","precipitation","precipitation_probability","weather_code",
     "cloud_cover_low","cloud_cover_mid","cloud_cover_high","wind_speed_10m","wind_gusts_10m",
-    "freezing_level_height","cape","visibility",
+    "freezing_level_height","cape","visibility","snow_depth","snowfall",
     ...levels.flatMap(p=>[`wind_speed_${p[0]}hPa`,`wind_direction_${p[0]}hPa`])];
   status.className="";status.textContent="予報を取得中…";
   const data=await apiJson("https://api.open-meteo.com/v1/forecast",{
     latitude:mt.lat,longitude:mt.lon,elevation:mt.elev,
     hourly:hourly.join(","),
-    daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset",
+    daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,precipitation_probability_max,sunrise,sunset",
     timezone:"Asia/Tokyo",wind_speed_unit:"ms",
-    start_date:iso(today),end_date:iso(fetchEnd)});
+    start_date:iso(addDays(today,-PAST_DAYS)),end_date:iso(fetchEnd)});
   const h=data.hourly,times=h.time,d=data.daily;
+  // 期間内に積雪・降雪が一度でもあれば各表に積雪列を出す(夏山では省略して表を簡潔に保つ)
+  const hasSnow=(h.snow_depth||[]).some(v=>v!=null&&v>=0.01)||(h.snowfall||[]).some(v=>v!=null&&v>=0.1);
 
   let htmlOut=`<h2>${esc(mt.name)}(${esc(mt.pref)}) の山岳気象予報</h2><ul class="meta">
     <li>地点: 北緯${mt.lat.toFixed(4)} 東経${mt.lon.toFixed(4)} / 標高 ${Math.round(mt.elev)}m
@@ -275,6 +302,32 @@ async function run(mt){
       ${seasonTh(start.getMonth()+1).mode}モード基準
       (風 ${seasonTh(start.getMonth()+1).wind.join("/")}m/s・降水 ${seasonTh(start.getMonth()+1).precip.join("/")}mm/3h・CAPE 500/1000)。
       夏山=6〜10月/冬山・残雪期=11〜5月を対象日の月で自動切替。降水確率は参考表示</li></ul>`;
+
+  // 直近実況(モデル解析値・過去3日) — 登山道コンディションの目安
+  const pastRows=[];
+  for(let dt2=addDays(today,-PAST_DAYS);dt2<today;dt2=addDays(dt2,1)){
+    const ds=iso(dt2),di=d.time.indexOf(ds);if(di<0)continue;
+    const idxs=dayIdx(times,ds);
+    const act=idxs.filter(i=>{const hr=+times[i].slice(11,13);return hr>=5&&hr<=17});
+    const rw=act.map(i=>ridgeWind(h,i,lo,hi,t));
+    const wsArr=rw.map(x=>x[0]).filter(v=>v!=null);
+    const ws=wsArr.length?Math.max(...wsArr):null;
+    const wd2=rw.find(x=>x[0]===ws)?.[1];
+    const fls=idxs.map(i=>h.freezing_level_height?.[i]).filter(v=>v!=null);
+    const dep=idxs.map(i=>h.snow_depth?.[i]).filter(v=>v!=null);
+    pastRows.push({d:new Date(dt2),code:d.weather_code[di],tmin:d.temperature_2m_min[di],tmax:d.temperature_2m_max[di],
+      ws,wd:wd2,pr:d.precipitation_sum[di],sf:d.snowfall_sum?.[di],
+      depth:dep.length?Math.max(...dep):null,fl:fls.length?Math.min(...fls):null});
+  }
+  if(pastRows.length){
+    htmlOut+=`<h2>直近の実況(モデル解析値・過去${pastRows.length}日) — 登山道コンディションの目安</h2><div class="tbl"><table>
+      <tr><th>日付</th><th>天気</th><th>山頂気温</th><th>稜線風max(5-17時)</th><th>降水量</th>${hasSnow?"<th>積雪max(新雪)</th>":""}<th>凍結高度min</th></tr>`;
+    for(const r of pastRows)htmlOut+=`<tr><td>${md(r.d)}${wj(r.d)}</td><td>${wcode(r.code)}</td>
+      <td>${f0(r.tmin)}〜${f0(r.tmax)}℃</td><td>${wdir(r.wd)} ${f1(r.ws)}m/s</td>
+      <td>${r.pr==null?"-":r.pr.toFixed(1)}mm</td>${hasSnow?`<td>${snowCell(r.depth,r.sf)}</td>`:""}<td>${f0(r.fl)}m</td></tr>`;
+    htmlOut+=`</table></div><ul class="meta">${trailHints(pastRows).map(x=>`<li>${x}</li>`).join("")}
+      <li>※実況はモデル解析値(観測所の実測ではない)。実際の路面・残雪・沢の状況は山小屋・自治体等の現地情報を優先してください</li></ul>`;
+  }
 
   // 日別サマリ
   const rows=[];
@@ -316,16 +369,18 @@ async function run(mt){
       if(best==null||order[v[0]]<order[best[0]])best=v;
     }
     const fls=idxs.map(i=>h.freezing_level_height?.[i]).filter(v=>v!=null);
+    const dep=idxs.map(i=>h.snow_depth?.[i]).filter(v=>v!=null);
     rows.push({d:new Date(dt2),idx:dayIdxV,eve:evening,code:d.weather_code[di],
       tmin:d.temperature_2m_min[di],tmax:d.temperature_2m_max[di],
       ws:wsMax,wd:wdMax,pr:d.precipitation_sum[di],prob:d.precipitation_probability_max[di],
+      sf:d.snowfall_sum?.[di],depth:dep.length?Math.max(...dep):null,
       fl:fls.length?Math.min(...fls):null,view:best?vhtml(best):"-"});
   }
   htmlOut+=`<h2>${weekly?"16日間の見通し":"日別サマリ"}</h2><div class="tbl"><table>
-    <tr><th>日付</th><th>指数</th><th>天気</th><th>眺望(朝)</th><th>山頂気温</th><th>稜線風max(5-17時)</th><th>降水量</th><th>降水%(参考)</th><th>凍結高度min</th></tr>`;
+    <tr><th>日付</th><th>指数</th><th>天気</th><th>眺望(朝)</th><th>山頂気温</th><th>稜線風max(5-17時)</th><th>降水量</th><th>降水%(参考)</th>${hasSnow?"<th>積雪max(新雪)</th>":""}<th>凍結高度min</th></tr>`;
   for(const r of rows)htmlOut+=`<tr><td>${md(r.d)}${wj(r.d)}</td><td>${IDX[r.idx]}${r.eve?'<span class="ew"> ⚠夕方</span>':""}</td><td>${wcode(r.code)}</td>
     <td>${r.view}</td><td>${f0(r.tmin)}〜${f0(r.tmax)}℃</td><td>${wdir(r.wd)} ${f1(r.ws)}m/s</td>
-    <td>${r.pr==null?"-":r.pr.toFixed(1)}mm</td><td>${f0(r.prob)}%</td><td>${f0(r.fl)}m</td></tr>`;
+    <td>${r.pr==null?"-":r.pr.toFixed(1)}mm</td><td>${f0(r.prob)}%</td>${hasSnow?`<td>${snowCell(r.depth,r.sf)}</td>`:""}<td>${f0(r.fl)}m</td></tr>`;
   htmlOut+=`</table></div>`;
   if(rows.some(r=>r.eve))htmlOut+=`<p class="ewnote">⚠夕方: 17〜20時に天候の急変(C相当)が予想されます。日中の指数には含めていませんが、下山遅れ・テント泊・ご来光待ちの際は特に注意してください。</p>`;
 
@@ -336,7 +391,7 @@ async function run(mt){
     const sun=di>=0&&d.sunrise?.[di]?` (日の出${d.sunrise[di].slice(11,16)} / 日の入${d.sunset[di].slice(11,16)})`:"";
     const thD=seasonTh(dt2.getMonth()+1);
     htmlOut+=`<h2>${ds} ${wj(dt2)} 3時間ごと詳細${sun}</h2><div class="tbl"><table>
-      <tr><th>時刻</th><th>指数</th><th>天気</th><th>眺望</th><th>気温</th><th>体感</th><th>稜線風</th><th>突風</th><th>降水</th><th>降水%(参考)</th><th>雷CAPE</th><th>雲(下/中/上)</th><th>視程</th><th>凍結高度</th></tr>`;
+      <tr><th>時刻</th><th>指数</th><th>天気</th><th>眺望</th><th>気温</th><th>体感</th><th>稜線風</th><th>突風</th><th>降水</th><th>降水%(参考)</th><th>雷CAPE</th><th>雲(下/中/上)</th><th>視程</th>${hasSnow?"<th>積雪(新雪)</th>":""}<th>凍結高度</th></tr>`;
     for(let sh=0;sh<24;sh+=3){
       const blk=idxs.filter(i=>Math.floor(+times[i].slice(11,13)/3)*3===sh);
       if(!blk.length)continue;
@@ -359,10 +414,12 @@ async function run(mt){
       const cl=`${f0(h.cloud_cover_low[i0])}/${f0(h.cloud_cover_mid[i0])}/${f0(h.cloud_cover_high[i0])}%`;
       const visTxt=vis==null?"-":vis>=1000?`${Math.round(vis/1000)}km`:`${Math.round(vis)}m`;
       const bi=blockIndex(ws,pr,cape,thD);
+      const depArr=blk.map(i=>h.snow_depth?.[i]).filter(v=>v!=null);
+      const sfBlk=blk.reduce((s,i)=>s+(h.snowfall?.[i]||0),0);
       htmlOut+=`<tr><td>${String(sh).padStart(2,"0")}時</td><td>${IDX[bi]}</td><td>${wcode(h.weather_code[i0])}</td><td>${view}</td>
         <td>${temp==null?"-":temp.toFixed(1)}℃</td><td>${f0(feel)}℃</td><td>${wdir(wd2)} ${f1(ws)}m/s</td>
         <td>${f0(gust)}m/s</td><td>${pr.toFixed(1)}mm</td><td>${f0(prob)}%</td><td>${f0(cape)}</td>
-        <td>${cl}</td><td>${visTxt}</td><td>${f0(h.freezing_level_height?.[i0])}m</td></tr>`;
+        <td>${cl}</td><td>${visTxt}</td>${hasSnow?`<td>${snowCell(depArr.length?Math.max(...depArr):null,sfBlk)}</td>`:""}<td>${f0(h.freezing_level_height?.[i0])}m</td></tr>`;
     }
     htmlOut+=`</table></div>`;
   }
