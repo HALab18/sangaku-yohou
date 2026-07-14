@@ -80,6 +80,9 @@ main{max-width:1080px;margin:0 auto;padding:26px 14px 8px}
   box-shadow:0 2px 12px rgba(30,45,74,.10);scroll-margin-top:12px}
 form{display:flex;flex-direction:column;gap:14px}
 .f{display:flex;flex-direction:column;gap:5px;font-size:.82em;font-weight:600;color:#556;margin:0}
+.lrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.lrow .listlink{color:var(--link);font-weight:600;text-decoration:none;white-space:nowrap}
+.lrow .listlink:hover{text-decoration:underline}
 input,select{font-size:16px;padding:11px 12px;border:1.5px solid var(--field);border-radius:10px;
   background:#fff;width:100%;font-family:inherit}
 input:focus,select:focus{outline:2px solid var(--night);outline-offset:1px}
@@ -226,7 +229,8 @@ footer a{color:var(--link)}
 <div id="appwrap" inert>
 <div class="formcard entry">
 <form id="f">
-  <label class="f mfield">山名（直接入力もできます）
+  <label class="f mfield">
+    <span class="lrow">山名（直接入力もできます）<a class="listlink" href="docs/mountains.html">対応山リスト ▸</a></span>
     <input id="mname" placeholder="例: 燕岳" required autocomplete="off">
     <div id="sugg" hidden></div>
   </label>
@@ -243,7 +247,7 @@ footer a{color:var(--link)}
   </div>
   <button id="go" type="submit">予報を見る</button>
 </form>
-<p class="hint">対応している山は<a href="docs/mountains.html">山名リスト</a>を、仕組みは<a href="docs/how-it-works-web.html">図解ページ</a>をご覧ください</p>
+<p class="hint">仕組みは<a href="docs/how-it-works-web.html">図解ページ</a>をご覧ください</p>
 </div>
 
 <div class="entry" id="status"></div>
