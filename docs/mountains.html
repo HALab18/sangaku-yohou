@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>対応している山の一覧 — PeakWeather</title>
+<meta name="description" content="PeakWeather が内蔵データベースで対応している全224座の一覧。山名をタップすると山頂・稜線の気象予報を表示します。">
+<link rel="icon" type="image/png" href="../icons/favicon-32.png">
+<meta name="theme-color" content="#1e2d4a">
+<!-- このファイルは scripts/gen_mountain_list.py により index.html から自動生成されます。直接編集しないでください -->
+<style>
+:root{--night:#1e2d4a;--slate:#48608c;--sky:#5b87c5;--link:#2b5fa3;
+  --btn:#4276b5;--bg:#f4f6f9;--line:#dee4ee;--field:#c9d2e0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#222;
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  font-size:14px;line-height:1.6}
+
+/* ヘッダー (本体ヒーローの縮小版) */
+header{background:var(--night);color:#fff;text-align:center;padding:30px 20px 0;position:relative}
+header .back{position:absolute;left:14px;top:12px;color:#c9d3e5;font-size:.82em;text-decoration:none}
+header .back:hover{color:#fff}
+header h1{margin:0;font-size:1.45em;font-weight:800;letter-spacing:.06em}
+header .sub{margin:8px 0 0;font-size:.85em;color:#c9d3e5}
+.ridge{display:block;width:100%;height:44px;margin-top:18px}
+
+main{max-width:860px;margin:0 auto;padding:18px 14px 8px}
+
+/* 検索 (本体フォームカードと同デザイン) */
+.searchcard{background:#fff;border-radius:14px;padding:14px 16px;
+  box-shadow:0 2px 12px rgba(30,45,74,.10);position:sticky;top:8px;z-index:10}
+.searchcard label{display:flex;flex-direction:column;gap:5px;font-size:.82em;font-weight:600;color:#556}
+.searchcard input{font-size:16px;padding:11px 12px;border:1.5px solid var(--field);border-radius:10px;
+  background:#fff;width:100%;font-family:inherit}
+.searchcard input:focus{outline:2px solid var(--night);outline-offset:1px}
+#hits{margin:8px 0 0;font-size:.82em;color:#5b6b8a;font-weight:600}
+
+.notice{background:#edf2f9;border-left:5px solid var(--slate);color:#44506b;padding:10px 12px;
+  border-radius:0 6px 6px 0;margin:18px 0;font-size:.9em}
+.notice a{color:var(--link)}
+
+/* 地域セクション (本体の見出し・表と同デザイン) */
+h2{color:var(--night);font-size:1.08em;margin:24px 0 8px;border-left:5px solid var(--sky);padding-left:8px}
+h2 .cnt{color:#8a94a8;font-size:.85em;font-weight:600}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 4px}
+table{border-collapse:collapse;width:100%}
+th{background:var(--slate);color:#fff;padding:6px 9px;font-weight:600;font-size:.9em}
+td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:center;background:#fff}
+tr:nth-child(even) td{background:#eef1f6}
+td.nm{text-align:left}
+td.nm a{color:var(--link);font-weight:600;text-decoration:none}
+td.nm a:hover{text-decoration:underline}
+td.nm small{display:block;color:#8a94a8;font-size:.82em;font-weight:400}
+td.el{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr[hidden]{display:none}
+
+footer{color:#888;font-size:.82em;margin-top:26px;border-top:1px solid var(--line);padding-top:10px;padding-bottom:16px}
+footer a{color:var(--link)}
+
+@media(min-width:700px){
+  header h1{font-size:1.7em}
+  main{padding:24px 24px 12px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back" href="../index.html">← トップへ戻る</a>
+  <h1>対応している山の一覧</h1>
+  <p class="sub">PeakWeather 内蔵データベース 全224座</p>
+  <svg class="ridge" viewBox="0 0 750 44" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 44 L0 30 L95 12 L185 26 L290 5 L395 24 L500 9 L610 27 L695 15 L750 24 L750 44 Z" fill="#f4f6f9"/>
+  </svg>
+</header>
+
+<main>
+
+<div class="searchcard">
+  <label>山名・読み・都道府県でしぼり込み
+    <input id="q" placeholder="例: やり / 槍 / 長野" autocomplete="off">
+  </label>
+  <p id="hits" hidden></p>
+</div>
+
+<div class="notice">
+山名をタップすると、その山の予報ページが開きます。<br>
+この一覧にない山も、<a href="../index.html">トップページ</a>の山名欄に直接入力すれば
+国土地理院の地名検索で自動的に探します。
+</div>
+
+<section class="rg">
+<h2>北海道 <span class="cnt">(9座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="斜里岳しゃりだけ北海道"><td class="nm"><a href="../index.html#%E6%96%9C%E9%87%8C%E5%B2%B3">斜里岳</a><small>しゃりだけ</small></td><td>北海道</td><td class="el">1,547m</td></tr>
+<tr data-k="大雪山(旭岳)たいせつざん北海道"><td class="nm"><a href="../index.html#%E5%A4%A7%E9%9B%AA%E5%B1%B1%28%E6%97%AD%E5%B2%B3%29">大雪山(旭岳)</a><small>たいせつざん</small></td><td>北海道</td><td class="el">2,291m</td></tr>
+<tr data-k="十勝岳とかちだけ北海道"><td class="nm"><a href="../index.html#%E5%8D%81%E5%8B%9D%E5%B2%B3">十勝岳</a><small>とかちだけ</small></td><td>北海道</td><td class="el">2,077m</td></tr>
+<tr data-k="トムラウシ山とむらうしやま北海道"><td class="nm"><a href="../index.html#%E3%83%88%E3%83%A0%E3%83%A9%E3%82%A6%E3%82%B7%E5%B1%B1">トムラウシ山</a><small>とむらうしやま</small></td><td>北海道</td><td class="el">2,141m</td></tr>
+<tr data-k="幌尻岳ぽろしりだけ北海道"><td class="nm"><a href="../index.html#%E5%B9%8C%E5%B0%BB%E5%B2%B3">幌尻岳</a><small>ぽろしりだけ</small></td><td>北海道</td><td class="el">2,052m</td></tr>
+<tr data-k="雌阿寒岳めあかんだけ北海道"><td class="nm"><a href="../index.html#%E9%9B%8C%E9%98%BF%E5%AF%92%E5%B2%B3">雌阿寒岳</a><small>めあかんだけ</small></td><td>北海道</td><td class="el">1,499m</td></tr>
+<tr data-k="羊蹄山ようていざん北海道"><td class="nm"><a href="../index.html#%E7%BE%8A%E8%B9%84%E5%B1%B1">羊蹄山</a><small>ようていざん</small></td><td>北海道</td><td class="el">1,898m</td></tr>
+<tr data-k="羅臼岳らうすだけ北海道"><td class="nm"><a href="../index.html#%E7%BE%85%E8%87%BC%E5%B2%B3">羅臼岳</a><small>らうすだけ</small></td><td>北海道</td><td class="el">1,661m</td></tr>
+<tr data-k="利尻岳りしりだけ北海道"><td class="nm"><a href="../index.html#%E5%88%A9%E5%B0%BB%E5%B2%B3">利尻岳</a><small>りしりだけ</small></td><td>北海道</td><td class="el">1,721m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="rg">
+<h2>東北 <span class="cnt">(102座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="会津朝日岳あいづあさひだけ福島県"><td class="nm"><a href="../index.html#%E4%BC%9A%E6%B4%A5%E6%9C%9D%E6%97%A5%E5%B2%B3">会津朝日岳</a><small>あいづあさひだけ</small></td><td>福島県</td><td class="el">1,624m</td></tr>
+<tr data-k="会津駒ヶ岳あいづこまがたけ福島県"><td class="nm"><a href="../index.html#%E4%BC%9A%E6%B4%A5%E9%A7%92%E3%83%B6%E5%B2%B3">会津駒ヶ岳</a><small>あいづこまがたけ</small></td><td>福島県</td><td class="el">2,133m</td></tr>
+<tr data-k="青麻山あおそさん宮城県"><td class="nm"><a href="../index.html#%E9%9D%92%E9%BA%BB%E5%B1%B1">青麻山</a><small>あおそさん</small></td><td>宮城県</td><td class="el">800m</td></tr>
+<tr data-k="秋田駒ヶ岳あきたこまがたけ秋田県"><td class="nm"><a href="../index.html#%E7%A7%8B%E7%94%B0%E9%A7%92%E3%83%B6%E5%B2%B3">秋田駒ヶ岳</a><small>あきたこまがたけ</small></td><td>秋田県</td><td class="el">1,637m</td></tr>
+<tr data-k="秋田焼山あきたやけやま秋田県"><td class="nm"><a href="../index.html#%E7%A7%8B%E7%94%B0%E7%84%BC%E5%B1%B1">秋田焼山</a><small>あきたやけやま</small></td><td>秋田県</td><td class="el">1,366m</td></tr>
+<tr data-k="浅草岳あさくさだけ福島県・新潟県"><td class="nm"><a href="../index.html#%E6%B5%85%E8%8D%89%E5%B2%B3">浅草岳</a><small>あさくさだけ</small></td><td>福島県・新潟県</td><td class="el">1,586m</td></tr>
+<tr data-k="安達太良山あだたらやま福島県"><td class="nm"><a href="../index.html#%E5%AE%89%E9%81%94%E5%A4%AA%E8%89%AF%E5%B1%B1">安達太良山</a><small>あだたらやま</small></td><td>福島県</td><td class="el">1,700m</td></tr>
+<tr data-k="安家森あっかもり岩手県"><td class="nm"><a href="../index.html#%E5%AE%89%E5%AE%B6%E6%A3%AE">安家森</a><small>あっかもり</small></td><td>岩手県</td><td class="el">1,239m</td></tr>
+<tr data-k="荒海山あらかいざん福島県・栃木県"><td class="nm"><a href="../index.html#%E8%8D%92%E6%B5%B7%E5%B1%B1">荒海山</a><small>あらかいざん</small></td><td>福島県・栃木県</td><td class="el">1,581m</td></tr>
+<tr data-k="飯豊山いいでさん福島県・山形県・新潟県"><td class="nm"><a href="../index.html#%E9%A3%AF%E8%B1%8A%E5%B1%B1">飯豊山</a><small>いいでさん</small></td><td>福島県・山形県・新潟県</td><td class="el">2,105m</td></tr>
+<tr data-k="泉ヶ岳いずみがたけ宮城県"><td class="nm"><a href="../index.html#%E6%B3%89%E3%83%B6%E5%B2%B3">泉ヶ岳</a><small>いずみがたけ</small></td><td>宮城県</td><td class="el">1,172m</td></tr>
+<tr data-k="一切経山いっさいきょうざん福島県"><td class="nm"><a href="../index.html#%E4%B8%80%E5%88%87%E7%B5%8C%E5%B1%B1">一切経山</a><small>いっさいきょうざん</small></td><td>福島県</td><td class="el">1,949m</td></tr>
+<tr data-k="以東岳いとうだけ山形県・新潟県"><td class="nm"><a href="../index.html#%E4%BB%A5%E6%9D%B1%E5%B2%B3">以東岳</a><small>いとうだけ</small></td><td>山形県・新潟県</td><td class="el">1,771m</td></tr>
+<tr data-k="祝瓶山いわいがめやま山形県"><td class="nm"><a href="../index.html#%E7%A5%9D%E7%93%B6%E5%B1%B1">祝瓶山</a><small>いわいがめやま</small></td><td>山形県</td><td class="el">1,417m</td></tr>
+<tr data-k="岩木山いわきさん青森県"><td class="nm"><a href="../index.html#%E5%B2%A9%E6%9C%A8%E5%B1%B1">岩木山</a><small>いわきさん</small></td><td>青森県</td><td class="el">1,625m</td></tr>
+<tr data-k="岩手山いわてさん岩手県"><td class="nm"><a href="../index.html#%E5%B2%A9%E6%89%8B%E5%B1%B1">岩手山</a><small>いわてさん</small></td><td>岩手県</td><td class="el">2,038m</td></tr>
+<tr data-k="牛形山うしがたやま岩手県"><td class="nm"><a href="../index.html#%E7%89%9B%E5%BD%A2%E5%B1%B1">牛形山</a><small>うしがたやま</small></td><td>岩手県</td><td class="el">1,340m</td></tr>
+<tr data-k="大朝日岳おおあさひだけ山形県"><td class="nm"><a href="../index.html#%E5%A4%A7%E6%9C%9D%E6%97%A5%E5%B2%B3">大朝日岳</a><small>おおあさひだけ</small></td><td>山形県</td><td class="el">1,871m</td></tr>
+<tr data-k="大駒ヶ岳おおこまがたけ青森県"><td class="nm"><a href="../index.html#%E5%A4%A7%E9%A7%92%E3%83%B6%E5%B2%B3">大駒ヶ岳</a><small>おおこまがたけ</small></td><td>青森県</td><td class="el">1,144m</td></tr>
+<tr data-k="大白森おおしろもり岩手県・秋田県"><td class="nm"><a href="../index.html#%E5%A4%A7%E7%99%BD%E6%A3%AE">大白森</a><small>おおしろもり</small></td><td>岩手県・秋田県</td><td class="el">1,216m</td></tr>
+<tr data-k="大滝根山おおたきねやま福島県"><td class="nm"><a href="../index.html#%E5%A4%A7%E6%BB%9D%E6%A0%B9%E5%B1%B1">大滝根山</a><small>おおたきねやま</small></td><td>福島県</td><td class="el">1,193m</td></tr>
+<tr data-k="大尽山おおづくしやま青森県"><td class="nm"><a href="../index.html#%E5%A4%A7%E5%B0%BD%E5%B1%B1">大尽山</a><small>おおづくしやま</small></td><td>青森県</td><td class="el">828m</td></tr>
+<tr data-k="翁山おきなさん山形県"><td class="nm"><a href="../index.html#%E7%BF%81%E5%B1%B1">翁山</a><small>おきなさん</small></td><td>山形県</td><td class="el">1,075m</td></tr>
+<tr data-k="小野岳おのだけ福島県"><td class="nm"><a href="../index.html#%E5%B0%8F%E9%87%8E%E5%B2%B3">小野岳</a><small>おのだけ</small></td><td>福島県</td><td class="el">1,383m</td></tr>
+<tr data-k="面白山おもしろやま山形県・宮城県"><td class="nm"><a href="../index.html#%E9%9D%A2%E7%99%BD%E5%B1%B1">面白山</a><small>おもしろやま</small></td><td>山形県・宮城県</td><td class="el">1,264m</td></tr>
+<tr data-k="兜明神嶽かぶとみょうじんだけ岩手県"><td class="nm"><a href="../index.html#%E5%85%9C%E6%98%8E%E7%A5%9E%E5%B6%BD">兜明神嶽</a><small>かぶとみょうじんだけ</small></td><td>岩手県</td><td class="el">1,005m</td></tr>
+<tr data-k="鎌倉岳かまくらだけ福島県"><td class="nm"><a href="../index.html#%E9%8E%8C%E5%80%89%E5%B2%B3">鎌倉岳</a><small>かまくらだけ</small></td><td>福島県</td><td class="el">967m</td></tr>
+<tr data-k="神室山かむろさん秋田県・山形県"><td class="nm"><a href="../index.html#%E7%A5%9E%E5%AE%A4%E5%B1%B1">神室山</a><small>かむろさん</small></td><td>秋田県・山形県</td><td class="el">1,365m</td></tr>
+<tr data-k="禿岳かむろだけ宮城県・山形県"><td class="nm"><a href="../index.html#%E7%A6%BF%E5%B2%B3">禿岳</a><small>かむろだけ</small></td><td>宮城県・山形県</td><td class="el">1,262m</td></tr>
+<tr data-k="鹿狼山かろうさん宮城県・福島県"><td class="nm"><a href="../index.html#%E9%B9%BF%E7%8B%BC%E5%B1%B1">鹿狼山</a><small>かろうさん</small></td><td>宮城県・福島県</td><td class="el">430m</td></tr>
+<tr data-k="霞露ヶ岳かろがたけ岩手県"><td class="nm"><a href="../index.html#%E9%9C%9E%E9%9C%B2%E3%83%B6%E5%B2%B3">霞露ヶ岳</a><small>かろがたけ</small></td><td>岩手県</td><td class="el">514m</td></tr>
+<tr data-k="月山がっさん山形県"><td class="nm"><a href="../index.html#%E6%9C%88%E5%B1%B1">月山</a><small>がっさん</small></td><td>山形県</td><td class="el">1,984m</td></tr>
+<tr data-k="蒲生岳がもうだけ福島県"><td class="nm"><a href="../index.html#%E8%92%B2%E7%94%9F%E5%B2%B3">蒲生岳</a><small>がもうだけ</small></td><td>福島県</td><td class="el">828m</td></tr>
+<tr data-k="雁戸山がんどさん宮城県・山形県"><td class="nm"><a href="../index.html#%E9%9B%81%E6%88%B8%E5%B1%B1">雁戸山</a><small>がんどさん</small></td><td>宮城県・山形県</td><td class="el">1,485m</td></tr>
+<tr data-k="北股岳きたまただけ山形県・新潟県"><td class="nm"><a href="../index.html#%E5%8C%97%E8%82%A1%E5%B2%B3">北股岳</a><small>きたまただけ</small></td><td>山形県・新潟県</td><td class="el">2,025m</td></tr>
+<tr data-k="金華山きんかさん宮城県"><td class="nm"><a href="../index.html#%E9%87%91%E8%8F%AF%E5%B1%B1">金華山</a><small>きんかさん</small></td><td>宮城県</td><td class="el">445m</td></tr>
+<tr data-k="櫛ヶ峯くしがみね青森県"><td class="nm"><a href="../index.html#%E6%AB%9B%E3%83%B6%E5%B3%AF">櫛ヶ峯</a><small>くしがみね</small></td><td>青森県</td><td class="el">1,517m</td></tr>
+<tr data-k="栗駒山くりこまやま岩手県・宮城県・秋田県"><td class="nm"><a href="../index.html#%E6%A0%97%E9%A7%92%E5%B1%B1">栗駒山</a><small>くりこまやま</small></td><td>岩手県・宮城県・秋田県</td><td class="el">1,626m</td></tr>
+<tr data-k="黒伏山くろぶしやま山形県"><td class="nm"><a href="../index.html#%E9%BB%92%E4%BC%8F%E5%B1%B1">黒伏山</a><small>くろぶしやま</small></td><td>山形県</td><td class="el">1,227m</td></tr>
+<tr data-k="甑岳こしきだけ山形県"><td class="nm"><a href="../index.html#%E7%94%91%E5%B2%B3">甑岳</a><small>こしきだけ</small></td><td>山形県</td><td class="el">1,016m</td></tr>
+<tr data-k="小岳こだけ秋田県"><td class="nm"><a href="../index.html#%E5%B0%8F%E5%B2%B3">小岳</a><small>こだけ</small></td><td>秋田県</td><td class="el">1,042m</td></tr>
+<tr data-k="小又山こまたやま山形県"><td class="nm"><a href="../index.html#%E5%B0%8F%E5%8F%88%E5%B1%B1">小又山</a><small>こまたやま</small></td><td>山形県</td><td class="el">1,367m</td></tr>
+<tr data-k="五葉山ごようざん岩手県"><td class="nm"><a href="../index.html#%E4%BA%94%E8%91%89%E5%B1%B1">五葉山</a><small>ごようざん</small></td><td>岩手県</td><td class="el">1,341m</td></tr>
+<tr data-k="笹倉山ささくらやま宮城県"><td class="nm"><a href="../index.html#%E7%AC%B9%E5%80%89%E5%B1%B1">笹倉山</a><small>ささくらやま</small></td><td>宮城県</td><td class="el">506m</td></tr>
+<tr data-k="三本槍岳さんぼんやりだけ福島県・栃木県"><td class="nm"><a href="../index.html#%E4%B8%89%E6%9C%AC%E6%A7%8D%E5%B2%B3">三本槍岳</a><small>さんぼんやりだけ</small></td><td>福島県・栃木県</td><td class="el">1,917m</td></tr>
+<tr data-k="蔵王山(熊野岳)ざおうさん山形県・宮城県"><td class="nm"><a href="../index.html#%E8%94%B5%E7%8E%8B%E5%B1%B1%28%E7%86%8A%E9%87%8E%E5%B2%B3%29">蔵王山(熊野岳)</a><small>ざおうさん</small></td><td>山形県・宮城県</td><td class="el">1,841m</td></tr>
+<tr data-k="志津倉山しづくらやま福島県"><td class="nm"><a href="../index.html#%E5%BF%97%E6%B4%A5%E5%80%89%E5%B1%B1">志津倉山</a><small>しづくらやま</small></td><td>福島県</td><td class="el">1,234m</td></tr>
+<tr data-k="白神岳しらかみだけ青森県"><td class="nm"><a href="../index.html#%E7%99%BD%E7%A5%9E%E5%B2%B3">白神岳</a><small>しらかみだけ</small></td><td>青森県</td><td class="el">1,235m</td></tr>
+<tr data-k="白鷹山しらたかやま山形県"><td class="nm"><a href="../index.html#%E7%99%BD%E9%B7%B9%E5%B1%B1">白鷹山</a><small>しらたかやま</small></td><td>山形県</td><td class="el">994m</td></tr>
+<tr data-k="白地山しろぢやま秋田県"><td class="nm"><a href="../index.html#%E7%99%BD%E5%9C%B0%E5%B1%B1">白地山</a><small>しろぢやま</small></td><td>秋田県</td><td class="el">1,034m</td></tr>
+<tr data-k="須金岳すがねだけ宮城県・秋田県"><td class="nm"><a href="../index.html#%E9%A0%88%E9%87%91%E5%B2%B3">須金岳</a><small>すがねだけ</small></td><td>宮城県・秋田県</td><td class="el">1,253m</td></tr>
+<tr data-k="仙台神室岳せんだいかむろだけ宮城県"><td class="nm"><a href="../index.html#%E4%BB%99%E5%8F%B0%E7%A5%9E%E5%AE%A4%E5%B2%B3">仙台神室岳</a><small>せんだいかむろだけ</small></td><td>宮城県</td><td class="el">1,356m</td></tr>
+<tr data-k="太平山たいへいざん秋田県"><td class="nm"><a href="../index.html#%E5%A4%AA%E5%B9%B3%E5%B1%B1">太平山</a><small>たいへいざん</small></td><td>秋田県</td><td class="el">1,170m</td></tr>
+<tr data-k="高松岳たかまつだけ秋田県"><td class="nm"><a href="../index.html#%E9%AB%98%E6%9D%BE%E5%B2%B3">高松岳</a><small>たかまつだけ</small></td><td>秋田県</td><td class="el">1,348m</td></tr>
+<tr data-k="田代岳たしろだけ秋田県"><td class="nm"><a href="../index.html#%E7%94%B0%E4%BB%A3%E5%B2%B3">田代岳</a><small>たしろだけ</small></td><td>秋田県</td><td class="el">1,178m</td></tr>
+<tr data-k="田代山たしろやま福島県・栃木県"><td class="nm"><a href="../index.html#%E7%94%B0%E4%BB%A3%E5%B1%B1">田代山</a><small>たしろやま</small></td><td>福島県・栃木県</td><td class="el">1,971m</td></tr>
+<tr data-k="大東岳だいとうだけ宮城県"><td class="nm"><a href="../index.html#%E5%A4%A7%E6%9D%B1%E5%B2%B3">大東岳</a><small>だいとうだけ</small></td><td>宮城県</td><td class="el">1,366m</td></tr>
+<tr data-k="鳥海山ちょうかいさん山形県・秋田県"><td class="nm"><a href="../index.html#%E9%B3%A5%E6%B5%B7%E5%B1%B1">鳥海山</a><small>ちょうかいさん</small></td><td>山形県・秋田県</td><td class="el">2,236m</td></tr>
+<tr data-k="栂峰つがみね山形県・福島県"><td class="nm"><a href="../index.html#%E6%A0%82%E5%B3%B0">栂峰</a><small>つがみね</small></td><td>山形県・福島県</td><td class="el">1,541m</td></tr>
+<tr data-k="天狗岳(青森)てんぐだけ青森県"><td class="nm"><a href="../index.html#%E5%A4%A9%E7%8B%97%E5%B2%B3%28%E9%9D%92%E6%A3%AE%29">天狗岳(青森)</a><small>てんぐだけ</small></td><td>青森県</td><td class="el">958m</td></tr>
+<tr data-k="徳仙丈山とくせんじょうさん宮城県"><td class="nm"><a href="../index.html#%E5%BE%B3%E4%BB%99%E4%B8%88%E5%B1%B1">徳仙丈山</a><small>とくせんじょうさん</small></td><td>宮城県</td><td class="el">711m</td></tr>
+<tr data-k="虎毛山とらげやま秋田県"><td class="nm"><a href="../index.html#%E8%99%8E%E6%AF%9B%E5%B1%B1">虎毛山</a><small>とらげやま</small></td><td>秋田県</td><td class="el">1,432m</td></tr>
+<tr data-k="十和利山とわりやま青森県・秋田県"><td class="nm"><a href="../index.html#%E5%8D%81%E5%92%8C%E5%88%A9%E5%B1%B1">十和利山</a><small>とわりやま</small></td><td>青森県・秋田県</td><td class="el">991m</td></tr>
+<tr data-k="七時雨山（南峰）ななしぐれやま岩手県"><td class="nm"><a href="../index.html#%E4%B8%83%E6%99%82%E9%9B%A8%E5%B1%B1%EF%BC%88%E5%8D%97%E5%B3%B0%EF%BC%89">七時雨山（南峰）</a><small>ななしぐれやま</small></td><td>岩手県</td><td class="el">1,063m</td></tr>
+<tr data-k="七ヶ岳ななつがたけ福島県"><td class="nm"><a href="../index.html#%E4%B8%83%E3%83%B6%E5%B2%B3">七ヶ岳</a><small>ななつがたけ</small></td><td>福島県</td><td class="el">1,636m</td></tr>
+<tr data-k="西吾妻山にしあづまやま福島県・山形県"><td class="nm"><a href="../index.html#%E8%A5%BF%E5%90%BE%E5%A6%BB%E5%B1%B1">西吾妻山</a><small>にしあづまやま</small></td><td>福島県・山形県</td><td class="el">2,035m</td></tr>
+<tr data-k="乳頭山にゅうとうさん岩手県・秋田県"><td class="nm"><a href="../index.html#%E4%B9%B3%E9%A0%AD%E5%B1%B1">乳頭山</a><small>にゅうとうさん</small></td><td>岩手県・秋田県</td><td class="el">1,478m</td></tr>
+<tr data-k="縫道石山ぬいどういしやま青森県"><td class="nm"><a href="../index.html#%E7%B8%AB%E9%81%93%E7%9F%B3%E5%B1%B1">縫道石山</a><small>ぬいどういしやま</small></td><td>青森県</td><td class="el">626m</td></tr>
+<tr data-k="博士山はかせやま福島県"><td class="nm"><a href="../index.html#%E5%8D%9A%E5%A3%AB%E5%B1%B1">博士山</a><small>はかせやま</small></td><td>福島県</td><td class="el">1,482m</td></tr>
+<tr data-k="八幡平はちまんたい岩手県・秋田県"><td class="nm"><a href="../index.html#%E5%85%AB%E5%B9%A1%E5%B9%B3">八幡平</a><small>はちまんたい</small></td><td>岩手県・秋田県</td><td class="el">1,613m</td></tr>
+<tr data-k="八甲田山はっこうださん青森県"><td class="nm"><a href="../index.html#%E5%85%AB%E7%94%B2%E7%94%B0%E5%B1%B1">八甲田山</a><small>はっこうださん</small></td><td>青森県</td><td class="el">1,585m</td></tr>
+<tr data-k="早池峰山はやちねさん岩手県"><td class="nm"><a href="../index.html#%E6%97%A9%E6%B1%A0%E5%B3%B0%E5%B1%B1">早池峰山</a><small>はやちねさん</small></td><td>岩手県</td><td class="el">1,917m</td></tr>
+<tr data-k="葉山はやま山形県"><td class="nm"><a href="../index.html#%E8%91%89%E5%B1%B1">葉山</a><small>はやま</small></td><td>山形県</td><td class="el">1,462m</td></tr>
+<tr data-k="磐梯山ばんだいさん福島県"><td class="nm"><a href="../index.html#%E7%A3%90%E6%A2%AF%E5%B1%B1">磐梯山</a><small>ばんだいさん</small></td><td>福島県</td><td class="el">1,816m</td></tr>
+<tr data-k="燧ヶ岳ひうちがたけ福島県"><td class="nm"><a href="../index.html#%E7%87%A7%E3%83%B6%E5%B2%B3">燧ヶ岳</a><small>ひうちがたけ</small></td><td>福島県</td><td class="el">2,356m</td></tr>
+<tr data-k="氷上山ひかみさん岩手県"><td class="nm"><a href="../index.html#%E6%B0%B7%E4%B8%8A%E5%B1%B1">氷上山</a><small>ひかみさん</small></td><td>岩手県</td><td class="el">875m</td></tr>
+<tr data-k="東吾妻山ひがしあづまやま福島県"><td class="nm"><a href="../index.html#%E6%9D%B1%E5%90%BE%E5%A6%BB%E5%B1%B1">東吾妻山</a><small>ひがしあづまやま</small></td><td>福島県</td><td class="el">1,975m</td></tr>
+<tr data-k="額取山ひたいとりやま福島県"><td class="nm"><a href="../index.html#%E9%A1%8D%E5%8F%96%E5%B1%B1">額取山</a><small>ひたいとりやま</small></td><td>福島県</td><td class="el">1,009m</td></tr>
+<tr data-k="姫神山ひめかみさん岩手県"><td class="nm"><a href="../index.html#%E5%A7%AB%E7%A5%9E%E5%B1%B1">姫神山</a><small>ひめかみさん</small></td><td>岩手県</td><td class="el">1,123m</td></tr>
+<tr data-k="屏風岳びょうぶだけ宮城県"><td class="nm"><a href="../index.html#%E5%B1%8F%E9%A2%A8%E5%B2%B3">屏風岳</a><small>びょうぶだけ</small></td><td>宮城県</td><td class="el">1,825m</td></tr>
+<tr data-k="藤里駒ヶ岳ふじさとこまがたけ秋田県"><td class="nm"><a href="../index.html#%E8%97%A4%E9%87%8C%E9%A7%92%E3%83%B6%E5%B2%B3">藤里駒ヶ岳</a><small>ふじさとこまがたけ</small></td><td>秋田県</td><td class="el">1,158m</td></tr>
+<tr data-k="二ッ箭山ふたつやさん福島県"><td class="nm"><a href="../index.html#%E4%BA%8C%E3%83%83%E7%AE%AD%E5%B1%B1">二ッ箭山</a><small>ふたつやさん</small></td><td>福島県</td><td class="el">710m</td></tr>
+<tr data-k="二岐山ふたまたやま福島県"><td class="nm"><a href="../index.html#%E4%BA%8C%E5%B2%90%E5%B1%B1">二岐山</a><small>ふたまたやま</small></td><td>福島県</td><td class="el">1,544m</td></tr>
+<tr data-k="吹越烏帽子ふっこしえぼし青森県"><td class="nm"><a href="../index.html#%E5%90%B9%E8%B6%8A%E7%83%8F%E5%B8%BD%E5%AD%90">吹越烏帽子</a><small>ふっこしえぼし</small></td><td>青森県</td><td class="el">508m</td></tr>
+<tr data-k="船形山ふながたやま宮城県・山形県"><td class="nm"><a href="../index.html#%E8%88%B9%E5%BD%A2%E5%B1%B1">船形山</a><small>ふながたやま</small></td><td>宮城県・山形県</td><td class="el">1,500m</td></tr>
+<tr data-k="不忘山ふぼうさん宮城県"><td class="nm"><a href="../index.html#%E4%B8%8D%E5%BF%98%E5%B1%B1">不忘山</a><small>ふぼうさん</small></td><td>宮城県</td><td class="el">1,705m</td></tr>
+<tr data-k="真昼岳まひるだけ岩手県・秋田県"><td class="nm"><a href="../index.html#%E7%9C%9F%E6%98%BC%E5%B2%B3">真昼岳</a><small>まひるだけ</small></td><td>岩手県・秋田県</td><td class="el">1,059m</td></tr>
+<tr data-k="摩耶山まやさん山形県"><td class="nm"><a href="../index.html#%E6%91%A9%E8%80%B6%E5%B1%B1">摩耶山</a><small>まやさん</small></td><td>山形県</td><td class="el">1,020m</td></tr>
+<tr data-k="三ッ岳みっつだけ青森県"><td class="nm"><a href="../index.html#%E4%B8%89%E3%83%83%E5%B2%B3">三ッ岳</a><small>みっつだけ</small></td><td>青森県</td><td class="el">1,159m</td></tr>
+<tr data-k="三ツ石山みついしさん岩手県"><td class="nm"><a href="../index.html#%E4%B8%89%E3%83%84%E7%9F%B3%E5%B1%B1">三ツ石山</a><small>みついしさん</small></td><td>岩手県</td><td class="el">1,466m</td></tr>
+<tr data-k="三岩岳みついわだけ福島県"><td class="nm"><a href="../index.html#%E4%B8%89%E5%B2%A9%E5%B2%B3">三岩岳</a><small>みついわだけ</small></td><td>福島県</td><td class="el">2,065m</td></tr>
+<tr data-k="女神山めがみやま岩手県・秋田県"><td class="nm"><a href="../index.html#%E5%A5%B3%E7%A5%9E%E5%B1%B1">女神山</a><small>めがみやま</small></td><td>岩手県・秋田県</td><td class="el">955m</td></tr>
+<tr data-k="女甑山めこしきやま秋田県・山形県"><td class="nm"><a href="../index.html#%E5%A5%B3%E7%94%91%E5%B1%B1">女甑山</a><small>めこしきやま</small></td><td>秋田県・山形県</td><td class="el">979m</td></tr>
+<tr data-k="杢蔵山もくぞうさん山形県"><td class="nm"><a href="../index.html#%E6%9D%A2%E8%94%B5%E5%B1%B1">杢蔵山</a><small>もくぞうさん</small></td><td>山形県</td><td class="el">1,027m</td></tr>
+<tr data-k="森吉山もりよしざん秋田県"><td class="nm"><a href="../index.html#%E6%A3%AE%E5%90%89%E5%B1%B1">森吉山</a><small>もりよしざん</small></td><td>秋田県</td><td class="el">1,454m</td></tr>
+<tr data-k="薬師岳(岩手)やくしだけ岩手県"><td class="nm"><a href="../index.html#%E8%96%AC%E5%B8%AB%E5%B2%B3%28%E5%B2%A9%E6%89%8B%29">薬師岳(岩手)</a><small>やくしだけ</small></td><td>岩手県</td><td class="el">1,645m</td></tr>
+<tr data-k="薬莱山やくらいさん宮城県"><td class="nm"><a href="../index.html#%E8%96%AC%E8%8E%B1%E5%B1%B1">薬莱山</a><small>やくらいさん</small></td><td>宮城県</td><td class="el">553m</td></tr>
+<tr data-k="焼石岳やけいしだけ岩手県"><td class="nm"><a href="../index.html#%E7%84%BC%E7%9F%B3%E5%B2%B3">焼石岳</a><small>やけいしだけ</small></td><td>岩手県</td><td class="el">1,547m</td></tr>
+<tr data-k="蓬田岳よもぎだだけ福島県"><td class="nm"><a href="../index.html#%E8%93%AC%E7%94%B0%E5%B2%B3">蓬田岳</a><small>よもぎだだけ</small></td><td>福島県</td><td class="el">952m</td></tr>
+<tr data-k="霊山りょうぜん福島県"><td class="nm"><a href="../index.html#%E9%9C%8A%E5%B1%B1">霊山</a><small>りょうぜん</small></td><td>福島県</td><td class="el">825m</td></tr>
+<tr data-k="六角牛山ろっこうしさん岩手県"><td class="nm"><a href="../index.html#%E5%85%AD%E8%A7%92%E7%89%9B%E5%B1%B1">六角牛山</a><small>ろっこうしさん</small></td><td>岩手県</td><td class="el">1,294m</td></tr>
+<tr data-k="和賀岳わがだけ岩手県・秋田県"><td class="nm"><a href="../index.html#%E5%92%8C%E8%B3%80%E5%B2%B3">和賀岳</a><small>わがだけ</small></td><td>岩手県・秋田県</td><td class="el">1,439m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="rg">
+<h2>関東 <span class="cnt">(21座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="赤城山(黒檜山)あかぎさん群馬県"><td class="nm"><a href="../index.html#%E8%B5%A4%E5%9F%8E%E5%B1%B1%28%E9%BB%92%E6%AA%9C%E5%B1%B1%29">赤城山(黒檜山)</a><small>あかぎさん</small></td><td>群馬県</td><td class="el">1,828m</td></tr>
+<tr data-k="浅間山あさまやま群馬県・長野県"><td class="nm"><a href="../index.html#%E6%B5%85%E9%96%93%E5%B1%B1">浅間山</a><small>あさまやま</small></td><td>群馬県・長野県</td><td class="el">2,568m</td></tr>
+<tr data-k="四阿山あずまやさん群馬県・長野県"><td class="nm"><a href="../index.html#%E5%9B%9B%E9%98%BF%E5%B1%B1">四阿山</a><small>あずまやさん</small></td><td>群馬県・長野県</td><td class="el">2,354m</td></tr>
+<tr data-k="大岳山おおだけさん東京都"><td class="nm"><a href="../index.html#%E5%A4%A7%E5%B2%B3%E5%B1%B1">大岳山</a><small>おおだけさん</small></td><td>東京都</td><td class="el">1,266m</td></tr>
+<tr data-k="大山(丹沢)おおやま神奈川県"><td class="nm"><a href="../index.html#%E5%A4%A7%E5%B1%B1%28%E4%B8%B9%E6%B2%A2%29">大山(丹沢)</a><small>おおやま</small></td><td>神奈川県</td><td class="el">1,252m</td></tr>
+<tr data-k="草津白根山(本白根山)くさつしらねさん群馬県"><td class="nm"><a href="../index.html#%E8%8D%89%E6%B4%A5%E7%99%BD%E6%A0%B9%E5%B1%B1%28%E6%9C%AC%E7%99%BD%E6%A0%B9%E5%B1%B1%29">草津白根山(本白根山)</a><small>くさつしらねさん</small></td><td>群馬県</td><td class="el">2,171m</td></tr>
+<tr data-k="雲取山くもとりやま東京都・埼玉県・山梨県"><td class="nm"><a href="../index.html#%E9%9B%B2%E5%8F%96%E5%B1%B1">雲取山</a><small>くもとりやま</small></td><td>東京都・埼玉県・山梨県</td><td class="el">2,017m</td></tr>
+<tr data-k="甲武信ヶ岳こぶしがたけ埼玉県・山梨県・長野県"><td class="nm"><a href="../index.html#%E7%94%B2%E6%AD%A6%E4%BF%A1%E3%83%B6%E5%B2%B3">甲武信ヶ岳</a><small>こぶしがたけ</small></td><td>埼玉県・山梨県・長野県</td><td class="el">2,475m</td></tr>
+<tr data-k="至仏山しぶつさん群馬県"><td class="nm"><a href="../index.html#%E8%87%B3%E4%BB%8F%E5%B1%B1">至仏山</a><small>しぶつさん</small></td><td>群馬県</td><td class="el">2,228m</td></tr>
+<tr data-k="皇海山すかいさん栃木県・群馬県"><td class="nm"><a href="../index.html#%E7%9A%87%E6%B5%B7%E5%B1%B1">皇海山</a><small>すかいさん</small></td><td>栃木県・群馬県</td><td class="el">2,144m</td></tr>
+<tr data-k="高尾山たかおさん東京都"><td class="nm"><a href="../index.html#%E9%AB%98%E5%B0%BE%E5%B1%B1">高尾山</a><small>たかおさん</small></td><td>東京都</td><td class="el">599m</td></tr>
+<tr data-k="谷川岳たにがわだけ群馬県・新潟県"><td class="nm"><a href="../index.html#%E8%B0%B7%E5%B7%9D%E5%B2%B3">谷川岳</a><small>たにがわだけ</small></td><td>群馬県・新潟県</td><td class="el">1,977m</td></tr>
+<tr data-k="丹沢山たんざわさん神奈川県"><td class="nm"><a href="../index.html#%E4%B8%B9%E6%B2%A2%E5%B1%B1">丹沢山</a><small>たんざわさん</small></td><td>神奈川県</td><td class="el">1,567m</td></tr>
+<tr data-k="筑波山つくばさん茨城県"><td class="nm"><a href="../index.html#%E7%AD%91%E6%B3%A2%E5%B1%B1">筑波山</a><small>つくばさん</small></td><td>茨城県</td><td class="el">877m</td></tr>
+<tr data-k="塔ノ岳とうのだけ神奈川県"><td class="nm"><a href="../index.html#%E5%A1%94%E3%83%8E%E5%B2%B3">塔ノ岳</a><small>とうのだけ</small></td><td>神奈川県</td><td class="el">1,491m</td></tr>
+<tr data-k="那須岳(茶臼岳)なすだけ栃木県"><td class="nm"><a href="../index.html#%E9%82%A3%E9%A0%88%E5%B2%B3%28%E8%8C%B6%E8%87%BC%E5%B2%B3%29">那須岳(茶臼岳)</a><small>なすだけ</small></td><td>栃木県</td><td class="el">1,915m</td></tr>
+<tr data-k="男体山なんたいさん栃木県"><td class="nm"><a href="../index.html#%E7%94%B7%E4%BD%93%E5%B1%B1">男体山</a><small>なんたいさん</small></td><td>栃木県</td><td class="el">2,486m</td></tr>
+<tr data-k="日光白根山にっこうしらねさん栃木県・群馬県"><td class="nm"><a href="../index.html#%E6%97%A5%E5%85%89%E7%99%BD%E6%A0%B9%E5%B1%B1">日光白根山</a><small>にっこうしらねさん</small></td><td>栃木県・群馬県</td><td class="el">2,578m</td></tr>
+<tr data-k="蛭ヶ岳ひるがたけ神奈川県"><td class="nm"><a href="../index.html#%E8%9B%AD%E3%83%B6%E5%B2%B3">蛭ヶ岳</a><small>ひるがたけ</small></td><td>神奈川県</td><td class="el">1,673m</td></tr>
+<tr data-k="武尊山ほたかやま群馬県"><td class="nm"><a href="../index.html#%E6%AD%A6%E5%B0%8A%E5%B1%B1">武尊山</a><small>ほたかやま</small></td><td>群馬県</td><td class="el">2,158m</td></tr>
+<tr data-k="両神山りょうかみさん埼玉県"><td class="nm"><a href="../index.html#%E4%B8%A1%E7%A5%9E%E5%B1%B1">両神山</a><small>りょうかみさん</small></td><td>埼玉県</td><td class="el">1,723m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="rg">
+<h2>甲信越 <span class="cnt">(68座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="間ノ岳あいのだけ山梨県・静岡県"><td class="nm"><a href="../index.html#%E9%96%93%E3%83%8E%E5%B2%B3">間ノ岳</a><small>あいのだけ</small></td><td>山梨県・静岡県</td><td class="el">3,190m</td></tr>
+<tr data-k="赤石岳あかいしだけ長野県・静岡県"><td class="nm"><a href="../index.html#%E8%B5%A4%E7%9F%B3%E5%B2%B3">赤石岳</a><small>あかいしだけ</small></td><td>長野県・静岡県</td><td class="el">3,121m</td></tr>
+<tr data-k="赤岳(八ヶ岳)あかだけ長野県・山梨県"><td class="nm"><a href="../index.html#%E8%B5%A4%E5%B2%B3%28%E5%85%AB%E3%83%B6%E5%B2%B3%29">赤岳(八ヶ岳)</a><small>あかだけ</small></td><td>長野県・山梨県</td><td class="el">2,899m</td></tr>
+<tr data-k="雨飾山あまかざりやま新潟県・長野県"><td class="nm"><a href="../index.html#%E9%9B%A8%E9%A3%BE%E5%B1%B1">雨飾山</a><small>あまかざりやま</small></td><td>新潟県・長野県</td><td class="el">1,963m</td></tr>
+<tr data-k="編笠山あみがさやま長野県・山梨県"><td class="nm"><a href="../index.html#%E7%B7%A8%E7%AC%A0%E5%B1%B1">編笠山</a><small>あみがさやま</small></td><td>長野県・山梨県</td><td class="el">2,524m</td></tr>
+<tr data-k="阿弥陀岳あみだだけ長野県"><td class="nm"><a href="../index.html#%E9%98%BF%E5%BC%A5%E9%99%80%E5%B2%B3">阿弥陀岳</a><small>あみだだけ</small></td><td>長野県</td><td class="el">2,805m</td></tr>
+<tr data-k="有明山ありあけやま長野県"><td class="nm"><a href="../index.html#%E6%9C%89%E6%98%8E%E5%B1%B1">有明山</a><small>ありあけやま</small></td><td>長野県</td><td class="el">2,268m</td></tr>
+<tr data-k="飯縄山いいづなやま長野県"><td class="nm"><a href="../index.html#%E9%A3%AF%E7%B8%84%E5%B1%B1">飯縄山</a><small>いいづなやま</small></td><td>長野県</td><td class="el">1,917m</td></tr>
+<tr data-k="硫黄岳いおうだけ長野県"><td class="nm"><a href="../index.html#%E7%A1%AB%E9%BB%84%E5%B2%B3">硫黄岳</a><small>いおうだけ</small></td><td>長野県</td><td class="el">2,760m</td></tr>
+<tr data-k="空木岳うつぎだけ長野県"><td class="nm"><a href="../index.html#%E7%A9%BA%E6%9C%A8%E5%B2%B3">空木岳</a><small>うつぎだけ</small></td><td>長野県</td><td class="el">2,864m</td></tr>
+<tr data-k="美ヶ原(王ヶ頭)うつくしがはら長野県"><td class="nm"><a href="../index.html#%E7%BE%8E%E3%83%B6%E5%8E%9F%28%E7%8E%8B%E3%83%B6%E9%A0%AD%29">美ヶ原(王ヶ頭)</a><small>うつくしがはら</small></td><td>長野県</td><td class="el">2,034m</td></tr>
+<tr data-k="越後駒ヶ岳えちごこまがたけ新潟県"><td class="nm"><a href="../index.html#%E8%B6%8A%E5%BE%8C%E9%A7%92%E3%83%B6%E5%B2%B3">越後駒ヶ岳</a><small>えちごこまがたけ</small></td><td>新潟県</td><td class="el">2,003m</td></tr>
+<tr data-k="恵那山えなさん長野県・岐阜県"><td class="nm"><a href="../index.html#%E6%81%B5%E9%82%A3%E5%B1%B1">恵那山</a><small>えなさん</small></td><td>長野県・岐阜県</td><td class="el">2,191m</td></tr>
+<tr data-k="奥穂高岳おくほたかだけ長野県・岐阜県"><td class="nm"><a href="../index.html#%E5%A5%A5%E7%A9%82%E9%AB%98%E5%B2%B3">奥穂高岳</a><small>おくほたかだけ</small></td><td>長野県・岐阜県</td><td class="el">3,190m</td></tr>
+<tr data-k="大天井岳おてんしょうだけ長野県"><td class="nm"><a href="../index.html#%E5%A4%A7%E5%A4%A9%E4%BA%95%E5%B2%B3">大天井岳</a><small>おてんしょうだけ</small></td><td>長野県</td><td class="el">2,922m</td></tr>
+<tr data-k="御嶽山おんたけさん長野県・岐阜県"><td class="nm"><a href="../index.html#%E5%BE%A1%E5%B6%BD%E5%B1%B1">御嶽山</a><small>おんたけさん</small></td><td>長野県・岐阜県</td><td class="el">3,067m</td></tr>
+<tr data-k="甲斐駒ヶ岳かいこまがたけ山梨県・長野県"><td class="nm"><a href="../index.html#%E7%94%B2%E6%96%90%E9%A7%92%E3%83%B6%E5%B2%B3">甲斐駒ヶ岳</a><small>かいこまがたけ</small></td><td>山梨県・長野県</td><td class="el">2,967m</td></tr>
+<tr data-k="鹿島槍ヶ岳かしまやりがたけ長野県・富山県"><td class="nm"><a href="../index.html#%E9%B9%BF%E5%B3%B6%E6%A7%8D%E3%83%B6%E5%B2%B3">鹿島槍ヶ岳</a><small>かしまやりがたけ</small></td><td>長野県・富山県</td><td class="el">2,889m</td></tr>
+<tr data-k="霞沢岳かすみざわだけ長野県"><td class="nm"><a href="../index.html#%E9%9C%9E%E6%B2%A2%E5%B2%B3">霞沢岳</a><small>かすみざわだけ</small></td><td>長野県</td><td class="el">2,646m</td></tr>
+<tr data-k="唐松岳からまつだけ長野県・富山県"><td class="nm"><a href="../index.html#%E5%94%90%E6%9D%BE%E5%B2%B3">唐松岳</a><small>からまつだけ</small></td><td>長野県・富山県</td><td class="el">2,696m</td></tr>
+<tr data-k="餓鬼岳がきだけ長野県"><td class="nm"><a href="../index.html#%E9%A4%93%E9%AC%BC%E5%B2%B3">餓鬼岳</a><small>がきだけ</small></td><td>長野県</td><td class="el">2,647m</td></tr>
+<tr data-k="木曽駒ヶ岳きそこまがたけ長野県"><td class="nm"><a href="../index.html#%E6%9C%A8%E6%9B%BD%E9%A7%92%E3%83%B6%E5%B2%B3">木曽駒ヶ岳</a><small>きそこまがたけ</small></td><td>長野県</td><td class="el">2,956m</td></tr>
+<tr data-k="北岳きただけ山梨県"><td class="nm"><a href="../index.html#%E5%8C%97%E5%B2%B3">北岳</a><small>きただけ</small></td><td>山梨県</td><td class="el">3,193m</td></tr>
+<tr data-k="北穂高岳きたほたかだけ長野県・岐阜県"><td class="nm"><a href="../index.html#%E5%8C%97%E7%A9%82%E9%AB%98%E5%B2%B3">北穂高岳</a><small>きたほたかだけ</small></td><td>長野県・岐阜県</td><td class="el">3,106m</td></tr>
+<tr data-k="北横岳きたよこだけ長野県"><td class="nm"><a href="../index.html#%E5%8C%97%E6%A8%AA%E5%B2%B3">北横岳</a><small>きたよこだけ</small></td><td>長野県</td><td class="el">2,480m</td></tr>
+<tr data-k="霧ヶ峰(車山)きりがみね長野県"><td class="nm"><a href="../index.html#%E9%9C%A7%E3%83%B6%E5%B3%B0%28%E8%BB%8A%E5%B1%B1%29">霧ヶ峰(車山)</a><small>きりがみね</small></td><td>長野県</td><td class="el">1,925m</td></tr>
+<tr data-k="金峰山きんぷさん山梨県・長野県"><td class="nm"><a href="../index.html#%E9%87%91%E5%B3%B0%E5%B1%B1">金峰山</a><small>きんぷさん</small></td><td>山梨県・長野県</td><td class="el">2,599m</td></tr>
+<tr data-k="黒姫山くろひめやま長野県"><td class="nm"><a href="../index.html#%E9%BB%92%E5%A7%AB%E5%B1%B1">黒姫山</a><small>くろひめやま</small></td><td>長野県</td><td class="el">2,053m</td></tr>
+<tr data-k="権現岳(八ヶ岳)ごんげんだけ長野県・山梨県"><td class="nm"><a href="../index.html#%E6%A8%A9%E7%8F%BE%E5%B2%B3%28%E5%85%AB%E3%83%B6%E5%B2%B3%29">権現岳(八ヶ岳)</a><small>ごんげんだけ</small></td><td>長野県・山梨県</td><td class="el">2,715m</td></tr>
+<tr data-k="塩見岳しおみだけ長野県・静岡県"><td class="nm"><a href="../index.html#%E5%A1%A9%E8%A6%8B%E5%B2%B3">塩見岳</a><small>しおみだけ</small></td><td>長野県・静岡県</td><td class="el">3,052m</td></tr>
+<tr data-k="縞枯山しまがれやま長野県"><td class="nm"><a href="../index.html#%E7%B8%9E%E6%9E%AF%E5%B1%B1">縞枯山</a><small>しまがれやま</small></td><td>長野県</td><td class="el">2,403m</td></tr>
+<tr data-k="白馬岳しろうまだけ長野県・富山県"><td class="nm"><a href="../index.html#%E7%99%BD%E9%A6%AC%E5%B2%B3">白馬岳</a><small>しろうまだけ</small></td><td>長野県・富山県</td><td class="el">2,932m</td></tr>
+<tr data-k="爺ヶ岳じいがたけ長野県・富山県"><td class="nm"><a href="../index.html#%E7%88%BA%E3%83%B6%E5%B2%B3">爺ヶ岳</a><small>じいがたけ</small></td><td>長野県・富山県</td><td class="el">2,670m</td></tr>
+<tr data-k="常念岳じょうねんだけ長野県"><td class="nm"><a href="../index.html#%E5%B8%B8%E5%BF%B5%E5%B2%B3">常念岳</a><small>じょうねんだけ</small></td><td>長野県</td><td class="el">2,857m</td></tr>
+<tr data-k="双六岳すごろくだけ長野県・岐阜県"><td class="nm"><a href="../index.html#%E5%8F%8C%E5%85%AD%E5%B2%B3">双六岳</a><small>すごろくだけ</small></td><td>長野県・岐阜県</td><td class="el">2,860m</td></tr>
+<tr data-k="仙丈ヶ岳せんじょうがたけ長野県・山梨県"><td class="nm"><a href="../index.html#%E4%BB%99%E4%B8%88%E3%83%B6%E5%B2%B3">仙丈ヶ岳</a><small>せんじょうがたけ</small></td><td>長野県・山梨県</td><td class="el">3,033m</td></tr>
+<tr data-k="平標山たいらっぴょうやま新潟県・群馬県"><td class="nm"><a href="../index.html#%E5%B9%B3%E6%A8%99%E5%B1%B1">平標山</a><small>たいらっぴょうやま</small></td><td>新潟県・群馬県</td><td class="el">1,984m</td></tr>
+<tr data-k="高妻山たかつまやま新潟県・長野県"><td class="nm"><a href="../index.html#%E9%AB%98%E5%A6%BB%E5%B1%B1">高妻山</a><small>たかつまやま</small></td><td>新潟県・長野県</td><td class="el">2,353m</td></tr>
+<tr data-k="蓼科山たてしなやま長野県"><td class="nm"><a href="../index.html#%E8%93%BC%E7%A7%91%E5%B1%B1">蓼科山</a><small>たてしなやま</small></td><td>長野県</td><td class="el">2,531m</td></tr>
+<tr data-k="大菩薩嶺だいぼさつれい山梨県"><td class="nm"><a href="../index.html#%E5%A4%A7%E8%8F%A9%E8%96%A9%E5%B6%BA">大菩薩嶺</a><small>だいぼさつれい</small></td><td>山梨県</td><td class="el">2,057m</td></tr>
+<tr data-k="蝶ヶ岳ちょうがたけ長野県"><td class="nm"><a href="../index.html#%E8%9D%B6%E3%83%B6%E5%B2%B3">蝶ヶ岳</a><small>ちょうがたけ</small></td><td>長野県</td><td class="el">2,677m</td></tr>
+<tr data-k="燕岳つばくろだけ長野県"><td class="nm"><a href="../index.html#%E7%87%95%E5%B2%B3">燕岳</a><small>つばくろだけ</small></td><td>長野県</td><td class="el">2,763m</td></tr>
+<tr data-k="光岳てかりだけ長野県・静岡県"><td class="nm"><a href="../index.html#%E5%85%89%E5%B2%B3">光岳</a><small>てかりだけ</small></td><td>長野県・静岡県</td><td class="el">2,591m</td></tr>
+<tr data-k="天狗岳(東天狗)てんぐだけ長野県"><td class="nm"><a href="../index.html#%E5%A4%A9%E7%8B%97%E5%B2%B3%28%E6%9D%B1%E5%A4%A9%E7%8B%97%29">天狗岳(東天狗)</a><small>てんぐだけ</small></td><td>長野県</td><td class="el">2,640m</td></tr>
+<tr data-k="戸隠山とがくしやま長野県"><td class="nm"><a href="../index.html#%E6%88%B8%E9%9A%A0%E5%B1%B1">戸隠山</a><small>とがくしやま</small></td><td>長野県</td><td class="el">1,904m</td></tr>
+<tr data-k="苗場山なえばさん新潟県・長野県"><td class="nm"><a href="../index.html#%E8%8B%97%E5%A0%B4%E5%B1%B1">苗場山</a><small>なえばさん</small></td><td>新潟県・長野県</td><td class="el">2,145m</td></tr>
+<tr data-k="西穂高岳にしほたかだけ長野県・岐阜県"><td class="nm"><a href="../index.html#%E8%A5%BF%E7%A9%82%E9%AB%98%E5%B2%B3">西穂高岳</a><small>にしほたかだけ</small></td><td>長野県・岐阜県</td><td class="el">2,909m</td></tr>
+<tr data-k="入笠山にゅうかさやま長野県"><td class="nm"><a href="../index.html#%E5%85%A5%E7%AC%A0%E5%B1%B1">入笠山</a><small>にゅうかさやま</small></td><td>長野県</td><td class="el">1,955m</td></tr>
+<tr data-k="野口五郎岳のぐちごろうだけ長野県・富山県"><td class="nm"><a href="../index.html#%E9%87%8E%E5%8F%A3%E4%BA%94%E9%83%8E%E5%B2%B3">野口五郎岳</a><small>のぐちごろうだけ</small></td><td>長野県・富山県</td><td class="el">2,924m</td></tr>
+<tr data-k="乗鞍岳のりくらだけ長野県・岐阜県"><td class="nm"><a href="../index.html#%E4%B9%97%E9%9E%8D%E5%B2%B3">乗鞍岳</a><small>のりくらだけ</small></td><td>長野県・岐阜県</td><td class="el">3,026m</td></tr>
+<tr data-k="針ノ木岳はりのきだけ長野県・富山県"><td class="nm"><a href="../index.html#%E9%87%9D%E3%83%8E%E6%9C%A8%E5%B2%B3">針ノ木岳</a><small>はりのきだけ</small></td><td>長野県・富山県</td><td class="el">2,821m</td></tr>
+<tr data-k="火打山ひうちやま新潟県"><td class="nm"><a href="../index.html#%E7%81%AB%E6%89%93%E5%B1%B1">火打山</a><small>ひうちやま</small></td><td>新潟県</td><td class="el">2,462m</td></tr>
+<tr data-k="聖岳ひじりだけ長野県・静岡県"><td class="nm"><a href="../index.html#%E8%81%96%E5%B2%B3">聖岳</a><small>ひじりだけ</small></td><td>長野県・静岡県</td><td class="el">3,013m</td></tr>
+<tr data-k="平ヶ岳ひらがたけ新潟県・群馬県"><td class="nm"><a href="../index.html#%E5%B9%B3%E3%83%B6%E5%B2%B3">平ヶ岳</a><small>ひらがたけ</small></td><td>新潟県・群馬県</td><td class="el">2,141m</td></tr>
+<tr data-k="富士山ふじさん山梨県・静岡県"><td class="nm"><a href="../index.html#%E5%AF%8C%E5%A3%AB%E5%B1%B1">富士山</a><small>ふじさん</small></td><td>山梨県・静岡県</td><td class="el">3,776m</td></tr>
+<tr data-k="鳳凰山(観音岳)ほうおうざん山梨県"><td class="nm"><a href="../index.html#%E9%B3%B3%E5%87%B0%E5%B1%B1%28%E8%A6%B3%E9%9F%B3%E5%B2%B3%29">鳳凰山(観音岳)</a><small>ほうおうざん</small></td><td>山梨県</td><td class="el">2,841m</td></tr>
+<tr data-k="宝剣岳ほうけんだけ長野県"><td class="nm"><a href="../index.html#%E5%AE%9D%E5%89%A3%E5%B2%B3">宝剣岳</a><small>ほうけんだけ</small></td><td>長野県</td><td class="el">2,931m</td></tr>
+<tr data-k="前穂高岳まえほたかだけ長野県"><td class="nm"><a href="../index.html#%E5%89%8D%E7%A9%82%E9%AB%98%E5%B2%B3">前穂高岳</a><small>まえほたかだけ</small></td><td>長野県</td><td class="el">3,090m</td></tr>
+<tr data-k="巻機山まきはたやま新潟県"><td class="nm"><a href="../index.html#%E5%B7%BB%E6%A9%9F%E5%B1%B1">巻機山</a><small>まきはたやま</small></td><td>新潟県</td><td class="el">1,967m</td></tr>
+<tr data-k="御神楽岳みかぐらだけ新潟県"><td class="nm"><a href="../index.html#%E5%BE%A1%E7%A5%9E%E6%A5%BD%E5%B2%B3">御神楽岳</a><small>みかぐらだけ</small></td><td>新潟県</td><td class="el">1,387m</td></tr>
+<tr data-k="瑞牆山みずがきやま山梨県"><td class="nm"><a href="../index.html#%E7%91%9E%E7%89%86%E5%B1%B1">瑞牆山</a><small>みずがきやま</small></td><td>山梨県</td><td class="el">2,230m</td></tr>
+<tr data-k="三ツ峠山みつとうげやま山梨県"><td class="nm"><a href="../index.html#%E4%B8%89%E3%83%84%E5%B3%A0%E5%B1%B1">三ツ峠山</a><small>みつとうげやま</small></td><td>山梨県</td><td class="el">1,785m</td></tr>
+<tr data-k="三俣蓮華岳みつまたれんげだけ長野県・富山県・岐阜県"><td class="nm"><a href="../index.html#%E4%B8%89%E4%BF%A3%E8%93%AE%E8%8F%AF%E5%B2%B3">三俣蓮華岳</a><small>みつまたれんげだけ</small></td><td>長野県・富山県・岐阜県</td><td class="el">2,841m</td></tr>
+<tr data-k="妙高山みょうこうさん新潟県"><td class="nm"><a href="../index.html#%E5%A6%99%E9%AB%98%E5%B1%B1">妙高山</a><small>みょうこうさん</small></td><td>新潟県</td><td class="el">2,454m</td></tr>
+<tr data-k="焼岳やけだけ長野県・岐阜県"><td class="nm"><a href="../index.html#%E7%84%BC%E5%B2%B3">焼岳</a><small>やけだけ</small></td><td>長野県・岐阜県</td><td class="el">2,455m</td></tr>
+<tr data-k="槍ヶ岳やりがたけ長野県・岐阜県"><td class="nm"><a href="../index.html#%E6%A7%8D%E3%83%B6%E5%B2%B3">槍ヶ岳</a><small>やりがたけ</small></td><td>長野県・岐阜県</td><td class="el">3,180m</td></tr>
+<tr data-k="横岳(八ヶ岳)よこだけ長野県"><td class="nm"><a href="../index.html#%E6%A8%AA%E5%B2%B3%28%E5%85%AB%E3%83%B6%E5%B2%B3%29">横岳(八ヶ岳)</a><small>よこだけ</small></td><td>長野県</td><td class="el">2,829m</td></tr>
+<tr data-k="鷲羽岳わしばだけ長野県・富山県"><td class="nm"><a href="../index.html#%E9%B7%B2%E7%BE%BD%E5%B2%B3">鷲羽岳</a><small>わしばだけ</small></td><td>長野県・富山県</td><td class="el">2,924m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="rg">
+<h2>北陸 <span class="cnt">(8座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="荒島岳あらしまだけ福井県"><td class="nm"><a href="../index.html#%E8%8D%92%E5%B3%B6%E5%B2%B3">荒島岳</a><small>あらしまだけ</small></td><td>福井県</td><td class="el">1,523m</td></tr>
+<tr data-k="黒部五郎岳くろべごろうだけ富山県・岐阜県"><td class="nm"><a href="../index.html#%E9%BB%92%E9%83%A8%E4%BA%94%E9%83%8E%E5%B2%B3">黒部五郎岳</a><small>くろべごろうだけ</small></td><td>富山県・岐阜県</td><td class="el">2,840m</td></tr>
+<tr data-k="五竜岳ごりゅうだけ富山県・長野県"><td class="nm"><a href="../index.html#%E4%BA%94%E7%AB%9C%E5%B2%B3">五竜岳</a><small>ごりゅうだけ</small></td><td>富山県・長野県</td><td class="el">2,814m</td></tr>
+<tr data-k="水晶岳すいしょうだけ富山県"><td class="nm"><a href="../index.html#%E6%B0%B4%E6%99%B6%E5%B2%B3">水晶岳</a><small>すいしょうだけ</small></td><td>富山県</td><td class="el">2,986m</td></tr>
+<tr data-k="立山たてやま富山県"><td class="nm"><a href="../index.html#%E7%AB%8B%E5%B1%B1">立山</a><small>たてやま</small></td><td>富山県</td><td class="el">3,015m</td></tr>
+<tr data-k="剱岳つるぎだけ富山県"><td class="nm"><a href="../index.html#%E5%89%B1%E5%B2%B3">剱岳</a><small>つるぎだけ</small></td><td>富山県</td><td class="el">2,999m</td></tr>
+<tr data-k="白山はくさん石川県・岐阜県"><td class="nm"><a href="../index.html#%E7%99%BD%E5%B1%B1">白山</a><small>はくさん</small></td><td>石川県・岐阜県</td><td class="el">2,702m</td></tr>
+<tr data-k="薬師岳やくしだけ富山県"><td class="nm"><a href="../index.html#%E8%96%AC%E5%B8%AB%E5%B2%B3">薬師岳</a><small>やくしだけ</small></td><td>富山県</td><td class="el">2,926m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="rg">
+<h2>東海 <span class="cnt">(3座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="天城山(万三郎岳)あまぎさん静岡県"><td class="nm"><a href="../index.html#%E5%A4%A9%E5%9F%8E%E5%B1%B1%28%E4%B8%87%E4%B8%89%E9%83%8E%E5%B2%B3%29">天城山(万三郎岳)</a><small>あまぎさん</small></td><td>静岡県</td><td class="el">1,406m</td></tr>
+<tr data-k="笠ヶ岳かさがたけ岐阜県"><td class="nm"><a href="../index.html#%E7%AC%A0%E3%83%B6%E5%B2%B3">笠ヶ岳</a><small>かさがたけ</small></td><td>岐阜県</td><td class="el">2,898m</td></tr>
+<tr data-k="悪沢岳わるさわだけ静岡県"><td class="nm"><a href="../index.html#%E6%82%AA%E6%B2%A2%E5%B2%B3">悪沢岳</a><small>わるさわだけ</small></td><td>静岡県</td><td class="el">3,141m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="rg">
+<h2>近畿 <span class="cnt">(3座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="伊吹山いぶきやま滋賀県・岐阜県"><td class="nm"><a href="../index.html#%E4%BC%8A%E5%90%B9%E5%B1%B1">伊吹山</a><small>いぶきやま</small></td><td>滋賀県・岐阜県</td><td class="el">1,377m</td></tr>
+<tr data-k="大台ヶ原山おおだいがはらやま奈良県・三重県"><td class="nm"><a href="../index.html#%E5%A4%A7%E5%8F%B0%E3%83%B6%E5%8E%9F%E5%B1%B1">大台ヶ原山</a><small>おおだいがはらやま</small></td><td>奈良県・三重県</td><td class="el">1,695m</td></tr>
+<tr data-k="八経ヶ岳(大峰山)はっきょうがたけ奈良県"><td class="nm"><a href="../index.html#%E5%85%AB%E7%B5%8C%E3%83%B6%E5%B2%B3%28%E5%A4%A7%E5%B3%B0%E5%B1%B1%29">八経ヶ岳(大峰山)</a><small>はっきょうがたけ</small></td><td>奈良県</td><td class="el">1,915m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="rg">
+<h2>中国・四国 <span class="cnt">(3座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="石鎚山いしづちさん愛媛県"><td class="nm"><a href="../index.html#%E7%9F%B3%E9%8E%9A%E5%B1%B1">石鎚山</a><small>いしづちさん</small></td><td>愛媛県</td><td class="el">1,982m</td></tr>
+<tr data-k="大山(伯耆)だいせん鳥取県"><td class="nm"><a href="../index.html#%E5%A4%A7%E5%B1%B1%28%E4%BC%AF%E8%80%86%29">大山(伯耆)</a><small>だいせん</small></td><td>鳥取県</td><td class="el">1,729m</td></tr>
+<tr data-k="剣山つるぎさん徳島県"><td class="nm"><a href="../index.html#%E5%89%A3%E5%B1%B1">剣山</a><small>つるぎさん</small></td><td>徳島県</td><td class="el">1,955m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section class="rg">
+<h2>九州・沖縄 <span class="cnt">(7座)</span></h2>
+<div class="tbl"><table>
+<thead><tr><th>山名（タップで予報へ）</th><th>都道府県</th><th>標高</th></tr></thead>
+<tbody>
+<tr data-k="阿蘇山(高岳)あそさん熊本県"><td class="nm"><a href="../index.html#%E9%98%BF%E8%98%87%E5%B1%B1%28%E9%AB%98%E5%B2%B3%29">阿蘇山(高岳)</a><small>あそさん</small></td><td>熊本県</td><td class="el">1,592m</td></tr>
+<tr data-k="開聞岳かいもんだけ鹿児島県"><td class="nm"><a href="../index.html#%E9%96%8B%E8%81%9E%E5%B2%B3">開聞岳</a><small>かいもんだけ</small></td><td>鹿児島県</td><td class="el">924m</td></tr>
+<tr data-k="霧島山(韓国岳)きりしまやま宮崎県・鹿児島県"><td class="nm"><a href="../index.html#%E9%9C%A7%E5%B3%B6%E5%B1%B1%28%E9%9F%93%E5%9B%BD%E5%B2%B3%29">霧島山(韓国岳)</a><small>きりしまやま</small></td><td>宮崎県・鹿児島県</td><td class="el">1,700m</td></tr>
+<tr data-k="九重山(中岳)くじゅうさん大分県"><td class="nm"><a href="../index.html#%E4%B9%9D%E9%87%8D%E5%B1%B1%28%E4%B8%AD%E5%B2%B3%29">九重山(中岳)</a><small>くじゅうさん</small></td><td>大分県</td><td class="el">1,791m</td></tr>
+<tr data-k="祖母山そぼさん大分県・宮崎県"><td class="nm"><a href="../index.html#%E7%A5%96%E6%AF%8D%E5%B1%B1">祖母山</a><small>そぼさん</small></td><td>大分県・宮崎県</td><td class="el">1,756m</td></tr>
+<tr data-k="宮之浦岳みやのうらだけ鹿児島県"><td class="nm"><a href="../index.html#%E5%AE%AE%E4%B9%8B%E6%B5%A6%E5%B2%B3">宮之浦岳</a><small>みやのうらだけ</small></td><td>鹿児島県</td><td class="el">1,936m</td></tr>
+<tr data-k="由布岳ゆふだけ大分県"><td class="nm"><a href="../index.html#%E7%94%B1%E5%B8%83%E5%B2%B3">由布岳</a><small>ゆふだけ</small></td><td>大分県</td><td class="el">1,583m</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<footer>
+<a href="../index.html">← PeakWeather トップへ戻る</a> /
+収録: 日本百名山・人気の山・東北百名山ほか 全224座 /
+山岳座標: 国土地理院データ・yamareco 山情報で照合
+</footer>
+
+</main>
+
+<script>
+"use strict";
+(function(){
+  var q=document.getElementById("q"),hits=document.getElementById("hits");
+  var rows=[].slice.call(document.querySelectorAll("tbody tr"));
+  var secs=[].slice.call(document.querySelectorAll(".rg"));
+  var total=224;
+  // カタカナ→ひらがな (読み検索用)
+  function norm(s){return s.toLowerCase().replace(/[ァ-ヶ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-96)})}
+  q.addEventListener("input",function(){
+    var v=norm(q.value.trim());
+    var n=0;
+    rows.forEach(function(tr){
+      var show=!v||norm(tr.dataset.k).indexOf(v)>=0;
+      tr.hidden=!show;if(show)n++;
+    });
+    secs.forEach(function(sec){
+      sec.hidden=!sec.querySelector("tbody tr:not([hidden])");
+    });
+    hits.hidden=!v;
+    hits.textContent=v?("全"+total+"座中 "+n+"座が該当"):"";
+  });
+})();
+</script>
+
+</body>
+</html>
