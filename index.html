@@ -10,50 +10,125 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e2d4a">
 <style>
-:root{--accent:#2d6a4f;--accent2:#b5451b;--night:#1e2d4a;--warn:#7b5e00;--bg:#f7f5f0}
+:root{--night:#1e2d4a;--night-d:#16223c;--slate:#48608c;--sky:#5b87c5;--link:#2b5fa3;
+  --btn:#4276b5;--btn-d:#3a68a3;--sel:#dceaf9;
+  --bg:#f4f6f9;--line:#dee4ee;--field:#c9d2e0}
 *{box-sizing:border-box}
-body{margin:0;padding:14px;background:var(--bg);color:#222;
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:#222;
   font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
   font-size:14px;line-height:1.6}
-main{max-width:1080px;margin:0 auto}
-h1{color:var(--accent);font-size:1.35em;border-bottom:3px solid var(--accent);
-  padding-bottom:6px;margin:0 0 4px}
-h1 small{font-size:.62em;color:#777;font-weight:400;margin-left:8px}
-h1 .ver{font-size:.5em;color:#fff;background:var(--accent);font-weight:700;
-  vertical-align:middle;margin-left:8px;padding:3px 8px;border-radius:10px}
-h2{color:var(--night);font-size:1.08em;margin:20px 0 8px;border-left:5px solid var(--accent);padding-left:8px}
-.lead{color:#666;font-size:.92em;margin:4px 0 14px}
-form{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08);
-  display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end}
-label{display:flex;flex-direction:column;font-size:.85em;color:#555;gap:2px}
-input,select{font-size:15px;padding:7px 9px;border:1px solid #ccc;border-radius:6px;background:#fff}
-input#mname{width:13em}
-.chk{flex-direction:row;align-items:center;gap:5px;padding-bottom:8px}
+
+/* ---- ヒーロー ---- */
+/* 背景を実写に差し替える場合: .hero-bg(svg) を削除し、下記1行を .hero に追加
+   background:url(icons/hero.jpg) center/cover no-repeat var(--night); */
+.hero{position:relative;min-height:92vh;min-height:92svh;display:flex;justify-content:center;
+  color:#fff;text-align:center;overflow:hidden;background:var(--night);padding:0 20px}
+.hero-bg{position:absolute;inset:0;width:100%;height:100%}
+.hero::after{content:"";position:absolute;inset:0;background:
+  linear-gradient(180deg,rgba(13,20,38,.5) 0%,rgba(13,20,38,.22) 42%,rgba(13,20,38,.68) 100%)}
+.hero-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
+  width:100%;max-width:640px;padding:max(10svh,56px) 0 max(4.5svh,28px)}
+.logomark{width:74px;height:auto;margin-bottom:12px;filter:drop-shadow(0 2px 10px rgba(0,0,0,.4))}
+h1{margin:0;font-size:2.15em;font-weight:800;letter-spacing:.05em;color:#fff;
+  text-shadow:0 2px 14px rgba(0,0,0,.45)}
+h1 .ver{font-size:.4em;vertical-align:.6em;margin-left:9px;padding:3px 10px;border-radius:999px;
+  background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45);font-weight:700;letter-spacing:.08em}
+.tagline{margin:12px 0 0;font-size:1.02em;font-weight:600;color:#eef2f9;
+  text-shadow:0 1px 8px rgba(0,0,0,.55)}
+.hero-sub{margin:14px 0 0;font-size:.85em;color:#c9d3e5;line-height:2;
+  text-shadow:0 1px 6px rgba(0,0,0,.55)}
+.hero-cta{margin-top:auto;padding-top:30px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:#fff;text-decoration:none;font-weight:700;font-size:.95em;letter-spacing:.08em}
+.hero-cta .btnface{padding:13px 36px;border-radius:999px;background:rgba(255,255,255,.13);
+  border:1.5px solid rgba(255,255,255,.6);backdrop-filter:blur(3px);transition:background .2s}
+.hero-cta:hover .btnface,.hero-cta:focus-visible .btnface{background:rgba(255,255,255,.3)}
+.hero-cta .chev{font-size:1.5em;line-height:1;animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+@media(prefers-reduced-motion:reduce){.hero-cta .chev{animation:none}}
+
+/* ---- 本体 ---- */
+main{max-width:1080px;margin:0 auto;padding:26px 14px 8px}
+.entry{max-width:560px;margin-left:auto;margin-right:auto}
+
+/* 利用規約 (折りたたみ・控えめ) */
+.terms{color:#82868f;font-size:.8em;line-height:1.75;margin:0 0 12px;
+  border:1px solid var(--line);border-radius:10px;background:#fafbfd}
+.terms summary{list-style:none;cursor:pointer;padding:10px 13px;font-weight:600;color:#8b909a;
+  display:flex;align-items:center;gap:7px;user-select:none}
+.terms summary::-webkit-details-marker{display:none}
+.terms summary::before{content:"▸";color:#b9bec6;transition:transform .15s}
+.terms[open] summary::before{transform:rotate(90deg)}
+.terms .tbody{padding:2px 14px 12px}
+.terms p{margin:0 0 8px}
+.terms a{color:#6b7280}
+
+/* 同意チェック */
+.gate{background:#fff;border:1.5px solid #b9c5da;border-radius:12px;padding:13px 14px;
+  margin:0 0 14px;box-shadow:0 1px 3px rgba(30,45,74,.06)}
+.gate label{display:flex;align-items:flex-start;gap:10px;font-size:.88em;font-weight:600;
+  color:#444;cursor:pointer;margin:0}
+.gate input[type=checkbox]{width:20px;height:20px;margin-top:1px;flex:none;accent-color:var(--night)}
+.gate small{display:block;font-weight:400;color:#999}
+.gate a{color:var(--link)}
+
+#appwrap{opacity:.4;pointer-events:none;filter:grayscale(60%);transition:opacity .2s,filter .2s}
+#appwrap.enabled{opacity:1;pointer-events:auto;filter:none}
+
+/* フォームカード */
+.formcard{background:#fff;border-radius:14px;padding:18px 16px 20px;
+  box-shadow:0 2px 12px rgba(30,45,74,.10);scroll-margin-top:12px}
+form{display:flex;flex-direction:column;gap:14px}
+.f{display:flex;flex-direction:column;gap:5px;font-size:.82em;font-weight:600;color:#556;margin:0}
+input,select{font-size:16px;padding:11px 12px;border:1.5px solid var(--field);border-radius:10px;
+  background:#fff;width:100%;font-family:inherit}
+input:focus,select:focus{outline:2px solid var(--night);outline-offset:1px}
+.frow{display:flex;gap:12px}
+.frow>.f{flex:1;min-width:0}
+.seg{display:flex;border:1.5px solid var(--field);border-radius:10px;overflow:hidden;background:#fff}
+.seg label{flex:1;margin:0;position:relative}
+.seg input{position:absolute;opacity:0;width:0;height:0}
+.seg span{display:flex;justify-content:center;align-items:center;padding:11px 2px;
+  font-size:14px;font-weight:600;color:#667;cursor:pointer;transition:background .15s}
+.seg label+label span{border-left:1.5px solid var(--field)}
+.seg input:checked+span{background:var(--sel);color:var(--night);font-weight:700}
+.seg input:focus-visible+span{outline:2px solid var(--btn);outline-offset:-3px}
+
+button{font-size:15px;padding:8px 22px;border:0;border-radius:8px;background:var(--btn);
+  color:#fff;font-weight:700;cursor:pointer;font-family:inherit}
+button:hover{background:var(--btn-d)}
+button:disabled{background:#9aa7bd;cursor:wait}
+#go{width:100%;padding:14px;font-size:16px;border-radius:12px;letter-spacing:.15em;
+  box-shadow:0 3px 10px rgba(74,126,194,.35)}
+.hint{color:#999;font-size:.8em;text-align:center;margin:12px 0 0}
+.hint a{color:var(--link)}
+
+/* 山名サジェスト */
 .mfield{position:relative}
 #sugg{position:absolute;top:100%;left:0;z-index:20;min-width:100%;width:max-content;max-width:80vw;
   max-height:min(280px,45vh);overflow-y:auto;overscroll-behavior:contain;
   background:#fff;border:1px solid #ccc;border-radius:8px;
-  box-shadow:0 6px 18px rgba(0,0,0,.18);margin-top:4px}
+  box-shadow:0 6px 18px rgba(0,0,0,.18);margin-top:4px;font-weight:400}
 #sugg div{display:flex;justify-content:space-between;gap:14px;padding:9px 12px;cursor:pointer;
   font-size:14px;color:#222}
-#sugg div:hover{background:#d8efe1}
+#sugg div:hover{background:#e8eef7}
 #sugg small{color:#888;white-space:nowrap}
-button{font-size:15px;padding:8px 22px;border:0;border-radius:6px;background:var(--accent);
-  color:#fff;font-weight:700;cursor:pointer}
-button:hover{background:#245a42}
-button:disabled{background:#9bb3a8;cursor:wait}
-#status{margin:12px 2px;font-size:.95em;color:var(--warn)}
+
+#status{margin:12px 2px;font-size:.95em;color:#5b6b8a;font-weight:600}
 #status.err{color:#a03415;font-weight:600}
 .cands{background:#fff;border-radius:10px;padding:12px 14px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.cands button{display:block;width:100%;text-align:left;background:#eef4f0;color:#222;
+.cands button{display:block;width:100%;text-align:left;background:#eef2f8;color:#222;
   font-weight:400;margin:6px 0;padding:8px 12px}
-.cands button:hover{background:#d8efe1}
+.cands button:hover{background:#dde6f2}
+
+/* 結果表示 */
+h2{color:var(--night);font-size:1.08em;margin:20px 0 8px;border-left:5px solid var(--sky);padding-left:8px}
 ul.meta{margin:0 0 8px;padding-left:1.2em;color:#555;font-size:.9em}
 .tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 4px}
 table{border-collapse:collapse;white-space:nowrap;width:100%}
-th{background:var(--accent);color:#fff;padding:6px 9px;font-weight:600;font-size:.9em}
-td{padding:5px 9px;border-bottom:1px solid #e2ddd2;text-align:center;background:#fff}
-tr:nth-child(even) td{background:#f3f0e8}
+th{background:var(--slate);color:#fff;padding:6px 9px;font-weight:600;font-size:.9em}
+td{padding:5px 9px;border-bottom:1px solid var(--line);text-align:center;background:#fff}
+tr:nth-child(even) td{background:#eef1f6}
 .b{display:inline-block;min-width:2.6em;padding:1px 7px;border-radius:10px;font-weight:700;font-size:.92em}
 .b-a{background:#d8efe1;color:#1c5b3f}.b-b{background:#fdeec9;color:#7b5e00}.b-c{background:#f9d9cf;color:#a03415}
 .v-ex{color:#1c5b3f;font-weight:700}.v-ok{color:#2d6a4f}.v-so{color:#7b5e00}.v-ng{color:#a03415}
@@ -61,53 +136,117 @@ tr:nth-child(even) td{background:#f3f0e8}
 .ew{color:#a03415;font-weight:700;font-size:.85em;white-space:nowrap}
 .ewnote{background:#f9d9cf;border-left:5px solid #a03415;padding:8px 12px;
   border-radius:0 6px 6px 0;margin:6px 0 14px;font-size:.9em}
-.notice{background:#fff8e6;border-left:5px solid var(--warn);padding:10px 12px;
+.notice{background:#edf2f9;border-left:5px solid var(--slate);color:#44506b;padding:10px 12px;
   border-radius:0 6px 6px 0;margin:18px 0;font-size:.9em}
-.gate{background:#fff8e6;border:2px solid var(--warn);border-radius:10px;padding:14px 16px;margin:12px 0}
-.gate p{margin:0 0 10px;font-size:.92em}
-.gate label{flex-direction:row;align-items:flex-start;gap:8px;font-weight:700;font-size:.95em;cursor:pointer}
-.gate input[type=checkbox]{width:18px;height:18px;margin-top:2px;flex:none}
-#appwrap{opacity:.4;pointer-events:none;filter:grayscale(60%);transition:opacity .2s,filter .2s}
-#appwrap.enabled{opacity:1;pointer-events:auto;filter:none}
-footer{color:#888;font-size:.85em;margin-top:22px;border-top:1px solid #ddd;padding-top:8px}
-footer a{color:var(--accent)}
-@media(max-width:600px){body{padding:8px;font-size:13px}input#mname{width:100%}
-  form{gap:8px 10px}}
+footer{color:#888;font-size:.82em;margin-top:26px;border-top:1px solid var(--line);padding-top:10px}
+footer a{color:var(--link)}
+#totop{position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:30;
+  width:46px;height:46px;border-radius:50%;padding:0;font-size:16px;line-height:1;
+  background:rgba(244,246,249,.4);color:var(--slate);border:1px solid rgba(72,96,140,.35);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  box-shadow:0 2px 8px rgba(30,45,74,.15);
+  opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .25s,transform .25s}
+#totop.show{opacity:1;transform:none;pointer-events:auto}
+#totop:hover{background:rgba(220,234,249,.7)}
+
+@media(min-width:700px){
+  h1{font-size:2.7em}
+  .tagline{font-size:1.15em}
+  .hero-sub{font-size:.95em}
+  main{padding:34px 24px 12px}
+}
 </style>
 </head>
-<body><main>
+<body>
 
-<h1>PeakWeather<span class="ver">β版</span><small>山頂コンディションをもっと手軽に。</small></h1>
-<p class="lead">山名を入れるだけで、山頂気温・稜線風・体感温度・雷リスク・眺望・登山指数を表示します。
-仕組みは<a href="docs/how-it-works-web.html">図解ページ</a>を参照。</p>
+<header class="hero">
+  <svg class="hero-bg" viewBox="0 0 750 1000" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1c2a47"/><stop offset=".4" stop-color="#3a5178"/>
+        <stop offset=".68" stop-color="#7b92b8"/><stop offset=".92" stop-color="#cfd9e9"/>
+      </linearGradient>
+      <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e6ecf5" stop-opacity="0"/>
+        <stop offset="1" stop-color="#e6ecf5" stop-opacity=".6"/>
+      </linearGradient>
+    </defs>
+    <rect width="750" height="1000" fill="url(#sky)"/>
+    <circle cx="520" cy="590" r="170" fill="#f5ecd9" opacity=".16"/>
+    <path d="M0 645 L85 545 L148 598 L232 468 L305 560 L392 478 L470 572 L562 502 L642 588 L750 518 L750 1000 L0 1000 Z" fill="#93a6c6"/>
+    <g fill="#eef3fa" opacity=".85">
+      <path d="M214 496 L232 468 L253 500 L244 490 L236 501 L227 491 Z"/>
+      <path d="M375 503 L392 478 L411 506 L403 497 L395 507 L386 497 Z"/>
+      <path d="M546 526 L562 502 L579 528 L571 519 L563 529 L555 520 Z"/>
+      <path d="M70 563 L85 545 L101 564 L94 557 L87 566 L79 557 Z"/>
+    </g>
+    <rect y="580" width="750" height="150" fill="url(#mist)"/>
+    <path d="M0 745 L108 645 L212 712 L332 612 L432 695 L545 628 L662 705 L750 645 L750 1000 L0 1000 Z" fill="#5d7099"/>
+    <rect y="700" width="750" height="120" fill="url(#mist)" opacity=".55"/>
+    <path d="M0 840 L142 732 L262 806 L402 718 L522 795 L642 738 L750 800 L750 1000 L0 1000 Z" fill="#394a71"/>
+    <path d="M0 935 L178 845 L342 908 L522 832 L682 902 L750 872 L750 1000 L0 1000 Z" fill="#1e2d4a"/>
+  </svg>
+  <div class="hero-inner">
+    <svg class="logomark" viewBox="0 0 76 52" aria-hidden="true">
+      <path d="M4 48 L28 8 L40 27 L50 14 L72 48 Z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M21.5 19 L28 8 L34.5 19 L31.2 15.6 L28 19.6 L24.8 15.6 Z" fill="#fff"/>
+      <path d="M45.8 20.5 L50 14 L54.2 20.5 L52 18.2 L50 20.8 L48 18.2 Z" fill="#fff"/>
+    </svg>
+    <h1>PeakWeather<span class="ver">β版</span></h1>
+    <p class="tagline">山頂コンディションをもっと手軽に。</p>
+    <p class="hero-sub">山名を入れるだけで、稜線の風・山頂気温・体感温度・<br>
+    雷リスク・眺望・登山指数をまとめてチェック。</p>
+    <a class="hero-cta" href="#start">
+      <span class="btnface">予報をチェックする</span>
+      <span class="chev" aria-hidden="true">⌄</span>
+    </a>
+  </div>
+</header>
 
-<div class="gate" id="gate">
-  <p>⚠️ 本サービスの情報は<b>参考情報</b>であり、正確性の保証・登山の安全を保証するものではありません。
-  本サービスの利用により生じたいかなる損害についても開発者は責任を負わず、
-  クレーム・苦情等は一切お受けできません。また、ライセンス形態の変更や、
-  <b>予告なく本サービスの公開を中止・終了する場合</b>があります。利用前に必ず
-  <a href="docs/terms.html" target="_blank" rel="noopener">利用規約・免責事項</a>をお読みください。</p>
+<main id="start">
+
+<details class="terms entry">
+  <summary>利用規約・免責事項（タップで開く）</summary>
+  <div class="tbody">
+    <p>⚠️ 本サービスの情報は<b>参考情報</b>であり、正確性の保証・登山の安全を保証するものではありません。
+    本サービスの利用により生じたいかなる損害についても開発者は責任を負わず、
+    クレーム・苦情等は一切お受けできません。また、ライセンス形態の変更や、
+    <b>予告なく本サービスの公開を中止・終了する場合</b>があります。利用前に必ず
+    <a href="docs/terms.html" target="_blank" rel="noopener">利用規約・免責事項（全文）</a>をお読みください。</p>
+  </div>
+</details>
+
+<div class="gate entry" id="gate">
   <label><input type="checkbox" id="agree">
-  上記および<a href="docs/terms.html" target="_blank" rel="noopener">利用規約・免責事項</a>の内容を読み、同意します（同意する方のみご利用いただけます）</label>
+  <span><a href="docs/terms.html" target="_blank" rel="noopener">利用規約・免責事項</a>の内容を読み、同意します
+  <small>本サービスは参考情報です（同意する方のみご利用いただけます）</small></span></label>
 </div>
 
 <div id="appwrap" inert>
+<div class="formcard entry">
 <form id="f">
-  <label class="mfield">山名（直接入力もできます）
+  <label class="f mfield">山名（直接入力もできます）
     <input id="mname" placeholder="例: 燕岳" required autocomplete="off">
     <div id="sugg" hidden></div>
   </label>
-  <label>開始日（詳細表示）
-    <input type="date" id="mdate">
-  </label>
-  <label>表示間隔
-    <select id="mstep"><option value="3" selected>3時間ごと</option><option value="1">1時間ごと</option></select>
-  </label>
+  <div class="frow">
+    <label class="f">開始日（詳細表示）
+      <select id="mdate"></select>
+    </label>
+    <div class="f">表示間隔
+      <div class="seg" role="radiogroup" aria-label="表示間隔">
+        <label><input type="radio" name="mstep" value="3" checked><span>3時間ごと</span></label>
+        <label><input type="radio" name="mstep" value="1"><span>1時間ごと</span></label>
+      </div>
+    </div>
+  </div>
   <button id="go" type="submit">予報を見る</button>
 </form>
+<p class="hint">仕組みは<a href="docs/how-it-works-web.html">図解ページ</a>をご覧ください</p>
+</div>
 
-<div id="status"></div>
-<div id="cands"></div>
+<div class="entry" id="status"></div>
+<div class="entry" id="cands"></div>
 <div id="out"></div>
 </div>
 
@@ -119,6 +258,8 @@ footer a{color:var(--accent)}
 <a href="docs/how-it-works-web.html">仕組み解説</a> /
 <a href="docs/terms.html">利用規約・免責事項</a> / MIT License
 </footer>
+
+<button id="totop" type="button" aria-label="山名の検索フォームへ戻る">▲</button>
 
 <script>
 "use strict";
@@ -250,7 +391,7 @@ function dayIdx(times,dstr){const out=[];for(let i=0;i<times.length;i++)if(times
 
 async function run(mt){
   const status=document.getElementById("status"),out=document.getElementById("out");
-  const step=+document.getElementById("mstep").value===1?1:3;
+  const step=+(document.querySelector('input[name="mstep"]:checked')?.value)===1?1:3;
   const days=4;
   const today=new Date();today.setHours(0,0,0,0);
   const horizon=addDays(today,15);
@@ -494,11 +635,11 @@ function applyHash(){
   if(!hash)return;
   // 形式: 山名/日付[/1h] (旧形式 山名/日付/日数/フラグ の余分なセグメントは無視)
   const[nm,dt2,seg3]=hash.split("/");
-  if(!nm)return;
+  if(!nm||nm==="start")return; // "#start"はページ内アンカー(CTA)であり山名ではない
   document.getElementById("mname").value=nm;
   const di=document.getElementById("mdate");
-  if(dt2)di.value=dt2;
-  if(seg3==="1h")document.getElementById("mstep").value="1";
+  if(dt2)di.value=dt2; // 範囲外(過去日など)で該当optionが無い場合は空になり、今日扱いになる
+  if(seg3==="1h")document.querySelector('input[name="mstep"][value="1"]').checked=true;
   const f=document.getElementById("f");
   if(f.requestSubmit)f.requestSubmit();else f.dispatchEvent(new Event("submit",{cancelable:true}));
 }
@@ -549,10 +690,32 @@ function applyHash(){
   });
 }
 
-// 初期化: 日付範囲・URLハッシュ復元
+// ---- 上に戻るボタン (ヒーローを過ぎたら表示。戻り先は検索フォーム) ----
+{
+  const btn=document.getElementById("totop");
+  btn.addEventListener("click",()=>document.querySelector(".formcard").scrollIntoView({behavior:"smooth"}));
+  let tick=false;
+  addEventListener("scroll",()=>{
+    if(tick)return;tick=true;
+    requestAnimationFrame(()=>{btn.classList.toggle("show",scrollY>innerHeight*.8);tick=false});
+  },{passive:true});
+}
+
+// ヒーローCTA: ハッシュを変えずにフォームへスクロール (#startが残ると共有URLと紛らわしいため)
+document.querySelector(".hero-cta").addEventListener("click",e=>{
+  e.preventDefault();
+  document.getElementById("start").scrollIntoView({behavior:"smooth"});
+});
+
+// 初期化: 開始日の選択肢(今日〜15日先・曜日つき)を生成、URLハッシュ復元
 {
   const today=new Date(),di=document.getElementById("mdate");
-  di.value=iso(today);di.min=iso(today);di.max=iso(addDays(today,15));
+  for(let i=0;i<16;i++){
+    const d=addDays(today,i),o=document.createElement("option");
+    o.value=iso(d);
+    o.textContent=`${md(d)}(${WJA[d.getDay()]})${i===0?" 今日":i===1?" 明日":""}`;
+    di.appendChild(o);
+  }
   if(localStorage.getItem(AGREE_KEY)==="1")applyHash();
 }
 </script>
