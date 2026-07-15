@@ -5,6 +5,57 @@
 
 ---
 
+## ▶ 次の再開ポイント（自宅で継続予定）: 「選定なし」の山を追加
+
+**現状**: DB **379座**を公開済み（master反映・GitHub Pages公開済み）。
+日本百名山・二百名山・三百名山は**ほぼ収録完了**（下記の照合で二百=残1件・三百=残3件のみ、
+いずれも表記ゆれ確認待ちで実質的な新規は無し）。
+**次にやること**: `tenki_mountain_list.xlsx` の「**選定なし**」264座のうち、まだDBに無い山を追加する。
+
+### 自宅PCでの始め方
+
+1. 最新を取り込む: `git checkout master && git pull`
+2. 元データはリポジトリに同梱済み: **`references/tenki_mountain_list.xlsx`**
+   （会社PCのデスクトップにあったものを取り込み済み。自宅でも git pull で入手できる）
+3. 保守スクリプトに openpyxl が必要: `pip install openpyxl`
+
+### 追加の手順（前回と同じ3スクリプトのパイプライン）
+
+現379座DBに対する照合結果（2026-07-15時点）:
+
+| ティア | auto_dup | review | new |
+|---|---|---|---|
+| 選定なし | 32 | 83 | 149 |
+
+→ 高確度の新規**149座** ＋ review **83件**。選定なしは定義上どの名山リストにも無い山なので、
+review の多くは「地域内で標高がたまたま近い別峰」＝実際は NEW。判定で振り分ける。
+**正味おおよそ200座前後**の追加になる見込み（DBは最終的に約580座に）。
+
+1. **照合**: `python scripts/db_reconcile.py --xlsx references/tenki_mountain_list.xlsx --out candidates.csv`
+2. **判定**: candidates.csv を開き、`tier=選定なし` かつ `bucket=review` の行の `decision` 列に
+   DUP / NEW を記入（標高差が小さく同一峰なら DUP、別峰なら NEW）。
+   同名別峰は `final_name` 列に「山名(県名)」等の区別名を書く（**既存の山名は絶対に変えない**＝共有URL互換）
+3. **座標取得**: `python scripts/db_fetch_coords.py --candidates candidates.csv --out enriched.csv --cache fetch_cache.json --tiers 選定なし`
+   - yamareco 未収録のマイナー峰が前回より多い見込み。status=manual は
+     国土地理院 地名検索（`msearch.gsi.go.jp/address-search/AddressSearch?q=山名`）＋
+     逆ジオコーダで解決（前回 えぶり差岳 でやった手順。中間ファイルは scratchpad に残っている）
+4. **反映**: `python scripts/db_merge.py --enriched enriched.csv --dry-run` で 2km 重複を確認 →
+   別峰と確認できたら `--allow-near 山名A/山名B` を付けて本実行（`--dry-run` を外す）
+5. **検証・再生成**: `python scripts/check_mountains.py`（全項目パス確認）→
+   `python scripts/gen_mountain_list.py`（docs/mountains.html 再生成）
+6. **座数更新**: README.md・docs/how-it-works.html・docs/how-it-works-web.html・skill/SKILL.md の
+   「379座」を新しい総数に。DEVLOG.md 先頭にセッション記録を追記
+7. **公開**: ブランチ→master マージ→push（今回と同じ流れ）
+
+### 選定なし特有の注意（先に決めておくこと）
+
+- **標高100m未満が2座ある**（源氏山 93m・大配 35m）。`check_mountains.py` の形式チェックは
+  100〜3776m を要求するので引っかかる。**除外する**か、必要なら下限を下げるかを最初に決める
+- マイナー峰は yamareco 未収録・GSI で代表点しか出ないことがある。DEM照合の差が150m超になる
+  座標は採用しない（山頂から外れている疑い）
+
+---
+
 ## 2026-07-15 — 二百・三百名山を追加してDB 379座に／CSV同期漏れ修正
 
 ### このセッションでやったこと
