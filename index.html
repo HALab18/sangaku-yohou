@@ -15,9 +15,20 @@
   --bg:#f4f6f9;--line:#dee4ee;--field:#c9d2e0}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:#222;
+body{margin:0;color:#222;
+  /* 背景: ロゴマークの山を細かく規則的に敷いたパターン(ごく淡く) */
+  background-color:var(--bg);
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2084%2060'%3E%3Cg%20transform='translate(29%2021)%20scale(0.342)'%3E%3Cpath%20d='M4%2048L28%208%2040%2027%2050%2014%2072%2048Z'%20fill='none'%20stroke='%23e9edf4'%20stroke-width='7'%20stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2084%2060'%3E%3Cg%20transform='translate(29%2021)%20scale(0.342)'%3E%3Cpath%20d='M4%2048L28%208%2040%2027%2050%2014%2072%2048Z'%20fill='none'%20stroke='%23e9edf4'%20stroke-width='7'%20stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E");
+  background-position:0 0,42px 30px;background-size:84px 60px,84px 60px;
   font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
   font-size:14px;line-height:1.6}
+
+/* ---- 山モチーフ共通(ロゴマークの小型アイコン) ---- */
+.mk{display:inline-block;flex:none}
+.mtdiv{display:flex;align-items:center;gap:14px;max-width:560px;margin:26px auto;color:#b7c3d8}
+.mtdiv::before,.mtdiv::after{content:"";flex:1;height:1px;background:var(--line)}
+.mtdiv .mk{width:24px;height:16px}
 
 /* ---- ヒーロー ---- */
 /* 背景を実写に差し替える場合: .hero-bg(svg) を削除し、下記1行を .hero に追加
@@ -42,6 +53,7 @@ h1 .ver{font-size:.4em;vertical-align:.6em;margin-left:9px;padding:3px 10px;bord
   color:#fff;text-decoration:none;font-weight:700;font-size:.95em;letter-spacing:.08em}
 .hero-cta .btnface{padding:13px 36px;border-radius:999px;background:rgba(255,255,255,.13);
   border:1.5px solid rgba(255,255,255,.6);backdrop-filter:blur(3px);transition:background .2s}
+.hero-cta .mk{width:20px;height:14px;margin-right:9px;vertical-align:-2px;color:#fff}
 .hero-cta:hover .btnface,.hero-cta:focus-visible .btnface{background:rgba(255,255,255,.3)}
 .hero-cta .chev{font-size:1.5em;line-height:1;animation:bob 1.8s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
@@ -75,8 +87,9 @@ main{max-width:1080px;margin:0 auto;padding:26px 14px 8px}
 #appwrap{opacity:.4;pointer-events:none;filter:grayscale(60%);transition:opacity .2s,filter .2s}
 #appwrap.enabled{opacity:1;pointer-events:auto;filter:none}
 
-/* フォームカード */
-.formcard{background:#fff;border-radius:14px;padding:18px 16px 20px;
+/* フォームカード (右上にロゴマークの透かし) */
+.formcard{border-radius:14px;padding:18px 16px 20px;
+  background:#fff url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2076%2052'%3E%3Cpath%20d='M4%2048L28%208%2040%2027%2050%2014%2072%2048Z'%20fill='none'%20stroke='%23e8eef7'%20stroke-width='5'%20stroke-linejoin='round'/%3E%3Cpath%20d='M21.5%2019L28%208l6.5%2011-3.3-3.4-3.2%204-3.2-4Z'%20fill='%23e8eef7'/%3E%3Cpath%20d='M45.8%2020.5L50%2014l4.2%206.5-2.2-2.3-2%202.6-2-2.6Z'%20fill='%23e8eef7'/%3E%3C/svg%3E") no-repeat right 16px top 14px/54px 37px;
   box-shadow:0 2px 12px rgba(30,45,74,.10);scroll-margin-top:12px}
 form{display:flex;flex-direction:column;gap:14px}
 .f{display:flex;flex-direction:column;gap:5px;font-size:.82em;font-weight:600;color:#556;margin:0}
@@ -86,6 +99,9 @@ form{display:flex;flex-direction:column;gap:14px}
 input,select{font-size:16px;padding:11px 12px;border:1.5px solid var(--field);border-radius:10px;
   background:#fff;width:100%;font-family:inherit}
 input:focus,select:focus{outline:2px solid var(--night);outline-offset:1px}
+/* 山名入力欄: 左脇に小さな山アイコン */
+#mname{padding-left:41px;
+  background:#fff url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2076%2052'%3E%3Cpath%20d='M4%2048L28%208%2040%2027%2050%2014%2072%2048Z'%20fill='none'%20stroke='%23a9b6cc'%20stroke-width='7'%20stroke-linejoin='round'/%3E%3Cpath%20d='M21.5%2019L28%208l6.5%2011-3.3-3.4-3.2%204-3.2-4Z'%20fill='%23a9b6cc'/%3E%3Cpath%20d='M45.8%2020.5L50%2014l4.2%206.5-2.2-2.3-2%202.6-2-2.6Z'%20fill='%23a9b6cc'/%3E%3C/svg%3E") no-repeat 13px 50%/19px 13px}
 .frow{display:flex;gap:12px}
 .frow>.f{flex:1;min-width:0}
 .seg{display:flex;border:1.5px solid var(--field);border-radius:10px;overflow:hidden;background:#fff}
@@ -103,6 +119,8 @@ button:hover{background:var(--btn-d)}
 button:disabled{background:#9aa7bd;cursor:wait}
 #go{width:100%;padding:14px;font-size:16px;border-radius:12px;letter-spacing:.15em;
   box-shadow:0 3px 10px rgba(74,126,194,.35)}
+#go .mk{width:19px;height:13px;margin-right:8px;vertical-align:-1.5px;color:#fff}
+.listlink .mk{width:14px;height:10px;margin-right:4px;vertical-align:-.5px}
 .hint{color:#999;font-size:.8em;text-align:center;margin:12px 0 0}
 .hint a{color:var(--link)}
 
@@ -119,6 +137,15 @@ button:disabled{background:#9aa7bd;cursor:wait}
 
 #status{margin:12px auto;font-size:.95em;color:#5b6b8a;font-weight:600}
 #status.err{color:#a03415;font-weight:600}
+/* 状態アイコン: 取得中=青い山が明滅 / エラー=赤い山 */
+#status:not(:empty)::before{content:"";display:inline-block;width:18px;height:12px;
+  margin-right:7px;vertical-align:-1px;
+  background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2076%2052'%3E%3Cpath%20d='M4%2048L28%208%2040%2027%2050%2014%2072%2048Z'%20fill='none'%20stroke='%235b87c5'%20stroke-width='7'%20stroke-linejoin='round'/%3E%3Cpath%20d='M21.5%2019L28%208l6.5%2011-3.3-3.4-3.2%204-3.2-4Z'%20fill='%235b87c5'/%3E%3Cpath%20d='M45.8%2020.5L50%2014l4.2%206.5-2.2-2.3-2%202.6-2-2.6Z'%20fill='%235b87c5'/%3E%3C/svg%3E") no-repeat center/contain;
+  animation:mkpulse 1.2s ease-in-out infinite}
+#status.err::before{animation:none;
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2076%2052'%3E%3Cpath%20d='M4%2048L28%208%2040%2027%2050%2014%2072%2048Z'%20fill='none'%20stroke='%23a03415'%20stroke-width='7'%20stroke-linejoin='round'/%3E%3Cpath%20d='M21.5%2019L28%208l6.5%2011-3.3-3.4-3.2%204-3.2-4Z'%20fill='%23a03415'/%3E%3Cpath%20d='M45.8%2020.5L50%2014l4.2%206.5-2.2-2.3-2%202.6-2-2.6Z'%20fill='%23a03415'/%3E%3C/svg%3E")}
+@keyframes mkpulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media(prefers-reduced-motion:reduce){#status:not(:empty)::before{animation:none}}
 .cands{background:#fff;border-radius:10px;padding:12px 14px;margin:10px auto;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .cands button{display:block;width:100%;text-align:left;background:#eef2f8;color:#222;
   font-weight:400;margin:6px 0;padding:8px 12px}
@@ -126,7 +153,10 @@ button:disabled{background:#9aa7bd;cursor:wait}
 
 /* 結果表示 */
 #out{scroll-margin-top:10px}
-h2{color:var(--night);font-size:1.08em;margin:20px 0 8px;border-left:5px solid var(--sky);padding-left:8px}
+/* 見出し: 左バーの代わりにロゴマークの山アイコン */
+h2{color:var(--night);font-size:1.08em;margin:20px 0 8px;display:flex;align-items:flex-start;gap:8px}
+h2::before{content:"";flex:none;width:20px;height:14px;margin-top:.32em;
+  background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2076%2052'%3E%3Cpath%20d='M4%2048L28%208%2040%2027%2050%2014%2072%2048Z'%20fill='none'%20stroke='%235b87c5'%20stroke-width='7'%20stroke-linejoin='round'/%3E%3Cpath%20d='M21.5%2019L28%208l6.5%2011-3.3-3.4-3.2%204-3.2-4Z'%20fill='%235b87c5'/%3E%3Cpath%20d='M45.8%2020.5L50%2014l4.2%206.5-2.2-2.3-2%202.6-2-2.6Z'%20fill='%235b87c5'/%3E%3C/svg%3E") no-repeat center/contain}
 ul.meta{margin:0 0 8px;padding-left:1.2em;color:#555;font-size:.9em}
 .tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 4px}
 table{border-collapse:collapse;white-space:nowrap;width:100%}
@@ -142,8 +172,9 @@ tr:nth-child(even) td{background:#eef1f6}
   border-radius:0 6px 6px 0;margin:6px 0 14px;font-size:.9em}
 .notice{background:#edf2f9;border-left:5px solid var(--slate);color:#44506b;padding:10px 12px;
   border-radius:0 6px 6px 0;margin:18px 0;font-size:.9em}
-footer{color:#888;font-size:.82em;margin-top:26px;border-top:1px solid var(--line);padding-top:10px}
+footer{color:#888;font-size:.82em;margin-top:8px}
 footer a{color:var(--link)}
+#totop .mk{width:20px;height:14px;display:block;margin:0 auto}
 #totop{position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:30;
   width:46px;height:46px;border-radius:50%;padding:0;font-size:16px;line-height:1;
   background:rgba(244,246,249,.4);color:var(--slate);border:1px solid rgba(72,96,140,.35);
@@ -162,6 +193,15 @@ footer a{color:var(--link)}
 </style>
 </head>
 <body>
+
+<!-- ロゴマークの小型アイコン(共通シンボル)。小サイズ向けに線を太めにした版 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mkico" viewBox="0 0 76 52">
+    <path d="M4 48 L28 8 L40 27 L50 14 L72 48 Z" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M21.5 19 L28 8 L34.5 19 L31.2 15.6 L28 19.6 L24.8 15.6 Z" fill="currentColor"/>
+    <path d="M45.8 20.5 L50 14 L54.2 20.5 L52 18.2 L50 20.8 L48 18.2 Z" fill="currentColor"/>
+  </symbol>
+</svg>
 
 <header class="hero">
   <svg class="hero-bg" viewBox="0 0 750 1000" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
@@ -201,7 +241,7 @@ footer a{color:var(--link)}
     <p class="hero-sub">山名を入れるだけで、稜線の風・山頂気温・体感温度・<br>
     雷リスク・眺望・登山指数をまとめてチェック。</p>
     <a class="hero-cta" href="#start">
-      <span class="btnface">予報をチェックする</span>
+      <span class="btnface"><svg class="mk" aria-hidden="true"><use href="#mkico"/></svg>予報をチェックする</span>
       <span class="chev" aria-hidden="true">⌄</span>
     </a>
   </div>
@@ -230,7 +270,7 @@ footer a{color:var(--link)}
 <div class="formcard entry">
 <form id="f">
   <label class="f mfield">
-    <span class="lrow">山名（直接入力もできます）<a class="listlink" href="docs/mountains.html">対応山リスト ▸</a></span>
+    <span class="lrow">山名（直接入力もできます）<a class="listlink" href="docs/mountains.html"><svg class="mk" aria-hidden="true"><use href="#mkico"/></svg>対応山リスト ▸</a></span>
     <input id="mname" placeholder="例: 燕岳" required autocomplete="off">
     <div id="sugg" hidden></div>
   </label>
@@ -245,15 +285,19 @@ footer a{color:var(--link)}
       </div>
     </div>
   </div>
-  <button id="go" type="submit">予報を見る</button>
+  <button id="go" type="submit"><svg class="mk" aria-hidden="true"><use href="#mkico"/></svg>予報を見る</button>
 </form>
 <p class="hint">仕組みは<a href="docs/how-it-works-web.html">図解ページ</a>をご覧ください</p>
 </div>
+
+<div class="mtdiv" aria-hidden="true"><svg class="mk"><use href="#mkico"/></svg></div>
 
 <div class="entry" id="status"></div>
 <div class="entry" id="cands"></div>
 <div id="out"></div>
 </div>
+
+<div class="mtdiv" aria-hidden="true"><svg class="mk"><use href="#mkico"/></svg></div>
 
 <footer>
 製作者: ふぇと /
@@ -265,7 +309,7 @@ footer a{color:var(--link)}
 <a href="docs/terms.html">利用規約・免責事項</a> / MIT License
 </footer>
 
-<button id="totop" type="button" aria-label="山名の検索フォームへ戻る">▲</button>
+<button id="totop" type="button" aria-label="山名の検索フォームへ戻る"><svg class="mk" aria-hidden="true"><use href="#mkico"/></svg></button>
 
 <script>
 "use strict";
