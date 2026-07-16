@@ -19,6 +19,8 @@ import csv
 import json
 import re
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -33,6 +35,9 @@ ELEV_URL = "https://api.open-meteo.com/v1/elevation"
 # DEM標高との差の判定(m)。90m格子DEMは岩峰で低く出るため即エラーにしない
 DIFF_OK = 80       # ここまでは正常とみなす
 DIFF_WARN = 150    # ここまでは「要確認」(急峻な地形ならありうる)。超えたら座標ミスの疑い
+
+CHUNK_WAIT = 2     # チャンク間の待機(秒)。無料APIのレート制限(429)を避ける
+RETRY_WAITS = [10, 30, 60]  # 429/5xx を受けたときの再試行間隔(秒)
 
 
 def load_rows():
@@ -83,18 +88,34 @@ def check_sync(rows):
     return errors
 
 
+def fetch_elevations(chunk):
+    """1チャンク分のDEM標高を取得。429/5xx は RETRY_WAITS の間隔で再試行する"""
+    q = urllib.parse.urlencode({
+        "latitude": ",".join(r["lat"] for r in chunk),
+        "longitude": ",".join(r["lon"] for r in chunk),
+    }, safe=",")
+    req = urllib.request.Request(f"{ELEV_URL}?{q}", headers={"User-Agent": "sangaku-yohou-check"})
+    for wait in RETRY_WAITS + [None]:
+        try:
+            with urllib.request.urlopen(req, timeout=30) as res:
+                return json.loads(res.read())["elevation"]
+        except urllib.error.HTTPError as e:
+            if e.code != 429 and e.code < 500:
+                raise
+            if wait is None:
+                raise SystemExit(
+                    f"Elevation APIが混雑しています (HTTP {e.code})。時間をおいて再実行してください")
+            print(f"  … HTTP {e.code}: {wait}秒待って再試行します")
+            time.sleep(wait)
+
+
 def check_elevation(rows):
     """Open-Meteo Elevation API (100地点/リクエスト) でCSV標高とDEM標高を突き合わせる"""
     dems = []
     for i in range(0, len(rows), 100):
-        chunk = rows[i:i + 100]
-        q = urllib.parse.urlencode({
-            "latitude": ",".join(r["lat"] for r in chunk),
-            "longitude": ",".join(r["lon"] for r in chunk),
-        }, safe=",")
-        req = urllib.request.Request(f"{ELEV_URL}?{q}", headers={"User-Agent": "sangaku-yohou-check"})
-        with urllib.request.urlopen(req, timeout=30) as res:
-            dems += json.loads(res.read())["elevation"]
+        if i:
+            time.sleep(CHUNK_WAIT)
+        dems += fetch_elevations(rows[i:i + 100])
     suspects, warns = [], []
     for r, dem in zip(rows, dems):
         if dem is None:
