@@ -656,12 +656,14 @@ function showCandidates(list){
     `<button data-i="${i}">${esc(m.name)}（${esc(m.pref)}） 標高${m.elev==null?"?":Math.round(m.elev)}m</button>`).join("");
   c.querySelectorAll("button").forEach(b=>b.onclick=()=>{c.innerHTML="";go(list[+b.dataset.i])});
 }
+// 実行中は検索・GPSの両ボタンを無効化する (同時実行で途中経過の表示が混ざるのを防ぐ)
+const runBtns=()=>[document.getElementById("go"),document.getElementById("gps")];
 async function go(mt){
-  const btn=document.getElementById("go"),status=document.getElementById("status");
-  btn.disabled=true;
+  const status=document.getElementById("status");
+  runBtns().forEach(b=>b.disabled=true);
   try{await run(mt)}
   catch(e){status.className="err";status.textContent=e.message+" — 時間をおいて再度お試しください";}
-  finally{btn.disabled=false}
+  finally{runBtns().forEach(b=>b.disabled=false)}
 }
 document.getElementById("f").onsubmit=async e=>{
   e.preventDefault();
@@ -696,7 +698,8 @@ function loadMuniTable(){
     window.GSI=window.GSI||{}; // muni.jsは既存のGSIオブジェクトへ追記する作りのため先に用意する
     const s=document.createElement("script");
     s.src="https://maps.gsi.go.jp/js/muni.js";
-    s.onload=res;s.onerror=()=>rej(new Error("muni.js load error"));
+    s.onload=res;
+    s.onerror=()=>{muniTable=undefined;s.remove();rej(new Error("muni.js load error"))}; // 失敗は次回のGPS利用で再試行
     document.head.appendChild(s);
   });
 }
@@ -710,11 +713,11 @@ async function muniName(lat,lon){
 }
 
 async function locateAndGo(){
-  const status=document.getElementById("status"),btn=document.getElementById("gps");
+  const status=document.getElementById("status");
   document.getElementById("cands").innerHTML="";document.getElementById("out").innerHTML="";
   if(!navigator.geolocation||!window.isSecureContext){
     status.className="err";status.textContent="この環境では位置情報を利用できません(HTTPSでのアクセスが必要です)";return}
-  btn.disabled=true;
+  runBtns().forEach(b=>b.disabled=true);
   status.className="";status.textContent="現在地を取得中…";
   try{
     const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,
@@ -725,7 +728,7 @@ async function locateAndGo(){
       apiJson("https://api.open-meteo.com/v1/elevation",{latitude:lat,longitude:lon}),
       muniName(lat,lon).catch(()=>null)]);
     const elev=elevData.elevation?.[0];
-    if(elev==null)throw new Error("現在地の標高を取得できませんでした");
+    if(!Number.isFinite(elev))throw new Error("現在地の標高を取得できませんでした");
     await go({name:muni?`現在地（${muni}）`:"現在地",pref:"",lat,lon,elev,here:true});
   }catch(e){
     status.className="err";
@@ -734,7 +737,7 @@ async function locateAndGo(){
       :e.code===2?"現在地を取得できませんでした。時間をおいて再度お試しください"
       :e.code===3?"現在地の取得がタイムアウトしました。空の開けた場所で再度お試しください"
       :e.message;
-  }finally{btn.disabled=false}
+  }finally{runBtns().forEach(b=>b.disabled=false)}
 }
 document.getElementById("gps").addEventListener("click",locateAndGo);
 
