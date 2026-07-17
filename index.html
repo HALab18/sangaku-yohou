@@ -120,6 +120,11 @@ button:disabled{background:#9aa7bd;cursor:wait}
 #go{width:100%;padding:14px;font-size:16px;border-radius:12px;letter-spacing:.15em;
   box-shadow:0 3px 10px rgba(74,126,194,.35)}
 #go .mk{width:19px;height:13px;margin-right:8px;vertical-align:-1.5px;color:#fff}
+/* 現在地ボタン: 山名検索(主ボタン)に対するセカンダリの控えめな外観 */
+#gps{width:100%;padding:11px;font-size:15px;border-radius:12px;margin-top:-4px;
+  background:#fff;color:var(--link);border:1.5px solid var(--field)}
+#gps:hover{background:var(--sel)}
+#gps:disabled{background:#fff;color:#9aa7bd}
 .listlink .mk{width:14px;height:10px;margin-right:4px;vertical-align:-.5px}
 .hint{color:#999;font-size:.8em;text-align:center;margin:12px 0 0}
 .hint a{color:var(--link)}
@@ -286,6 +291,7 @@ footer a{color:var(--link)}
     </div>
   </div>
   <button id="go" type="submit"><svg class="mk" aria-hidden="true"><use href="#mkico"/></svg>予報を見る</button>
+  <button id="gps" type="button">📍 現在地の予報を見る</button>
 </form>
 <p class="hint">仕組みは<a href="docs/how-it-works-web.html">図解ページ</a>をご覧ください</p>
 </div>
@@ -468,9 +474,9 @@ async function run(mt){
   // 期間内に積雪・降雪が一度でもあれば各表に積雪列を出す(夏山では省略して表を簡潔に保つ)
   const hasSnow=(h.snow_depth||[]).some(v=>v!=null&&v>=0.01)||(h.snowfall||[]).some(v=>v!=null&&v>=0.1);
 
-  let htmlOut=`<h2>${esc(mt.name)}(${esc(mt.pref)}) の山岳気象予報</h2><ul class="meta">
+  let htmlOut=`<h2>${esc(mt.name)}${mt.pref?`(${esc(mt.pref)})`:""} の山岳気象予報</h2><ul class="meta">
     <li>地点: 北緯${mt.lat.toFixed(4)} 東経${mt.lon.toFixed(4)} / 標高 ${Math.round(mt.elev)}m
-      (${mt.geo?"地名検索: 標高はグリッド値で山頂より低いことがあります":"内蔵DB"})</li>
+      (${mt.here?"GPS現在地: 標高は地形モデルによる推定値":mt.geo?"地名検索: 標高はグリッド値で山頂より低いことがあります":"内蔵DB"})</li>
     <li>稜線風: ${lo[0]===hi[0]?lo[0]+"hPa":lo[0]+"/"+hi[0]+"hPa補間"} / 気温は標高${Math.round(mt.elev)}m面 /
       体感温度 = 風冷指数 (JAG/TI式。風速4.8km/h未満は気温をそのまま採用)</li>
     <li>登山指数: <span class="b b-a">A</span>=登山適 / <span class="b b-b">B</span>=要注意(経験者向き・行程短縮検討) / <span class="b b-c">C</span>=登山不適。
@@ -639,7 +645,7 @@ async function run(mt){
     <a href="https://tenki.jp/mountain/">tenki.jp山の天気</a>等）と現地の状況で行ってください。</div>`;
   out.innerHTML=htmlOut;
   status.textContent="";
-  location.hash=encodeURIComponent(mt.name)+"/"+iso(start)+(step===1?"/1h":"");
+  location.hash=(mt.here?"gps":encodeURIComponent(mt.name))+"/"+iso(start)+(step===1?"/1h":"");
   out.scrollIntoView({behavior:"smooth"}); // 結果の先頭へ移動して予報をすぐ見られるように
 }
 
@@ -677,6 +683,36 @@ document.getElementById("f").onsubmit=async e=>{
   }catch(e){status.className="err";status.textContent=e.message}
 };
 
+// ---- GPS現在地の予報 ----
+// GPS高度は誤差が大きいため使わず、DB整備スクリプトと同じ Open-Meteo Elevation API の
+// 地形モデル(DEM)標高を採用する。あとは既存の go() に座標を渡すだけで山と同じ予報が出る。
+async function locateAndGo(){
+  const status=document.getElementById("status"),btn=document.getElementById("gps");
+  document.getElementById("cands").innerHTML="";document.getElementById("out").innerHTML="";
+  if(!navigator.geolocation||!window.isSecureContext){
+    status.className="err";status.textContent="この環境では位置情報を利用できません(HTTPSでのアクセスが必要です)";return}
+  btn.disabled=true;
+  status.className="";status.textContent="現在地を取得中…";
+  try{
+    const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,
+      {enableHighAccuracy:true,timeout:15000,maximumAge:60000}));
+    const lat=pos.coords.latitude,lon=pos.coords.longitude;
+    status.textContent="現在地の標高を取得中…";
+    const elev=(await apiJson("https://api.open-meteo.com/v1/elevation",
+      {latitude:lat,longitude:lon})).elevation?.[0];
+    if(elev==null)throw new Error("現在地の標高を取得できませんでした");
+    await go({name:"現在地",pref:"",lat,lon,elev,here:true});
+  }catch(e){
+    status.className="err";
+    status.textContent=
+      e.code===1?"位置情報の利用が許可されませんでした。ブラウザの設定で位置情報を許可してください"
+      :e.code===2?"現在地を取得できませんでした。時間をおいて再度お試しください"
+      :e.code===3?"現在地の取得がタイムアウトしました。空の開けた場所で再度お試しください"
+      :e.message;
+  }finally{btn.disabled=false}
+}
+document.getElementById("gps").addEventListener("click",locateAndGo);
+
 // ---- 利用規約への同意ゲート ----
 // 同意しない限り本体フォームは操作不可(inert + pointer-events:none。キーボード操作も遮断)。
 // 同意はローカル保存し次回以降は再表示しない。
@@ -687,8 +723,12 @@ function applyHash(){
   // 形式: 山名/日付[/1h] (旧形式 山名/日付/日数/フラグ の余分なセグメントは無視)
   const[nm,dt2,seg3]=hash.split("/");
   if(!nm||nm==="start")return; // "#start"はページ内アンカー(CTA)であり山名ではない
-  document.getElementById("mname").value=nm;
   const di=document.getElementById("mdate");
+  if(nm==="gps"){ // GPS現在地の予報(開く人の位置で再測位する)
+    if(dt2)di.value=dt2;
+    if(seg3==="1h")document.querySelector('input[name="mstep"][value="1"]').checked=true;
+    locateAndGo();return}
+  document.getElementById("mname").value=nm;
   if(dt2)di.value=dt2; // 範囲外(過去日など)で該当optionが無い場合は空になり、今日扱いになる
   if(seg3==="1h")document.querySelector('input[name="mstep"][value="1"]').checked=true;
   const f=document.getElementById("f");
