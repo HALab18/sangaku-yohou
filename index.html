@@ -686,6 +686,29 @@ document.getElementById("f").onsubmit=async e=>{
 // ---- GPS現在地の予報 ----
 // GPS高度は誤差が大きいため使わず、DB整備スクリプトと同じ Open-Meteo Elevation API の
 // 地形モデル(DEM)標高を採用する。あとは既存の go() に座標を渡すだけで山と同じ予報が出る。
+
+// 市町村名の逆引き: 国土地理院の逆ジオコーダで市区町村コードを取得し、
+// 同院のコード表(muni.js)で名称に変換する。表は大きいのでGPS利用時に一度だけ読み込む。
+// 取得に失敗しても予報は出す(表示名が「現在地」のままになるだけ)
+let muniTable;
+function loadMuniTable(){
+  return muniTable??=new Promise((res,rej)=>{
+    window.GSI=window.GSI||{}; // muni.jsは既存のGSIオブジェクトへ追記する作りのため先に用意する
+    const s=document.createElement("script");
+    s.src="https://maps.gsi.go.jp/js/muni.js";
+    s.onload=res;s.onerror=()=>rej(new Error("muni.js load error"));
+    document.head.appendChild(s);
+  });
+}
+async function muniName(lat,lon){
+  const d=await apiJson("https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress",{lat,lon},1);
+  const cd=d.results?.muniCd;
+  if(!cd)return null;
+  await loadMuniTable();
+  // 値は "4,宮城県,4101,仙台市　青葉区" 形式。政令市の区は全角空白の前(市名)までを使う
+  return(window.GSI.MUNI_ARRAY?.[String(+cd)]||"").split(",")[3]?.split("　")[0]||null;
+}
+
 async function locateAndGo(){
   const status=document.getElementById("status"),btn=document.getElementById("gps");
   document.getElementById("cands").innerHTML="";document.getElementById("out").innerHTML="";
@@ -698,10 +721,12 @@ async function locateAndGo(){
       {enableHighAccuracy:true,timeout:15000,maximumAge:60000}));
     const lat=pos.coords.latitude,lon=pos.coords.longitude;
     status.textContent="現在地の標高を取得中…";
-    const elev=(await apiJson("https://api.open-meteo.com/v1/elevation",
-      {latitude:lat,longitude:lon})).elevation?.[0];
+    const[elevData,muni]=await Promise.all([
+      apiJson("https://api.open-meteo.com/v1/elevation",{latitude:lat,longitude:lon}),
+      muniName(lat,lon).catch(()=>null)]);
+    const elev=elevData.elevation?.[0];
     if(elev==null)throw new Error("現在地の標高を取得できませんでした");
-    await go({name:"現在地",pref:"",lat,lon,elev,here:true});
+    await go({name:muni?`現在地（${muni}）`:"現在地",pref:"",lat,lon,elev,here:true});
   }catch(e){
     status.className="err";
     status.textContent=
