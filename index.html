@@ -96,6 +96,7 @@ form{display:flex;flex-direction:column;gap:14px}
 .lrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .lrow .listlink{color:var(--link);font-weight:600;text-decoration:none;white-space:nowrap}
 .lrow .listlink:hover{text-decoration:underline}
+.linkgrp{display:flex;gap:12px;flex-wrap:wrap}
 input,select{font-size:16px;padding:11px 12px;border:1.5px solid var(--field);border-radius:10px;
   background:#fff;width:100%;font-family:inherit}
 input:focus,select:focus{outline:2px solid var(--night);outline-offset:1px}
@@ -275,7 +276,10 @@ footer a{color:var(--link)}
 <div class="formcard entry">
 <form id="f">
   <label class="f mfield">
-    <span class="lrow">山名（直接入力もできます）<a class="listlink" href="docs/mountains.html"><svg class="mk" aria-hidden="true"><use href="#mkico"/></svg>対応山リスト ▸</a></span>
+    <span class="lrow">山名（直接入力もできます）<span class="linkgrp">
+      <a class="listlink" href="docs/point.html">座標を指定 ▸</a>
+      <a class="listlink" href="docs/mountains.html"><svg class="mk" aria-hidden="true"><use href="#mkico"/></svg>対応山リスト ▸</a>
+    </span></span>
     <input id="mname" placeholder="例: 燕岳" required autocomplete="off">
     <div id="sugg" hidden></div>
   </label>
@@ -309,6 +313,7 @@ footer a{color:var(--link)}
 製作者: ふぇと /
 データ: <a href="https://open-meteo.com/">Open-Meteo</a> (CC BY 4.0) /
 山岳座標: 国土地理院データで照合 /
+<a href="docs/point.html">座標で予報</a> /
 <a href="docs/mountains.html">対応山リスト</a> /
 <a href="docs/how-it-works-web.html">仕組み解説</a> /
 <a href="docs/terms.html">利用規約・免責事項</a> / MIT License
@@ -475,7 +480,7 @@ async function run(mt){
 
   let htmlOut=`<h2>${esc(mt.name)}${mt.pref?`(${esc(mt.pref)})`:""} の山岳気象予報</h2><ul class="meta">
     <li>地点: 北緯${mt.lat.toFixed(4)} 東経${mt.lon.toFixed(4)} / 標高 ${Math.round(mt.elev)}m
-      (${mt.here?"GPS現在地: 標高は地形モデルによる推定値":mt.geo?"地名検索: 標高はグリッド値で山頂より低いことがあります":"内蔵DB"})</li>
+      (${mt.coord?(mt.elevManual?"座標指定: 標高はご指定の値":"座標指定: 標高は地形モデルによる推定値"):mt.here?"GPS現在地: 標高は地形モデルによる推定値":mt.geo?"地名検索: 標高はグリッド値で山頂より低いことがあります":"内蔵DB"})</li>
     <li>稜線風: ${lo[0]===hi[0]?lo[0]+"hPa":lo[0]+"/"+hi[0]+"hPa補間"} / 気温は標高${Math.round(mt.elev)}m面 /
       体感温度 = 風冷指数 (JAG/TI式。風速4.8km/h未満は気温をそのまま採用)</li>
     <li>登山指数: <span class="b b-a">A</span>=登山適 / <span class="b b-b">B</span>=要注意(経験者向き・行程短縮検討) / <span class="b b-c">C</span>=登山不適。
@@ -644,7 +649,8 @@ async function run(mt){
     <a href="https://tenki.jp/mountain/">tenki.jp山の天気</a>等）と現地の状況で行ってください。</div>`;
   out.innerHTML=htmlOut;
   status.textContent="";
-  location.hash=(mt.here?"gps":encodeURIComponent(mt.name))+"/"+iso(start)+(step===1?"/1h":"");
+  const hashKey=mt.here?"gps":mt.coord?`${mt.lat},${mt.lon}${mt.elevManual?","+mt.elev:""}`:encodeURIComponent(mt.name);
+  location.hash=hashKey+"/"+iso(start)+(step===1?"/1h":"");
   out.scrollIntoView({behavior:"smooth"}); // 結果の先頭へ移動して予報をすぐ見られるように
 }
 
@@ -740,6 +746,32 @@ async function locateAndGo(){
 }
 document.getElementById("gps").addEventListener("click",locateAndGo);
 
+// ---- 座標指定の予報 (docs/point.html からの遷移先) ----
+// GPSと同じく標高はDEM自動取得だが、elevManualが指定されていればそちらを使う。
+// 地点名はdocs/point.html側で入力されていればsessionStorage経由で一度だけ受け取る(URL共有時は市町村名に戻る)。
+async function locateCoordAndGo(lat,lon,elevManual){
+  const status=document.getElementById("status");
+  document.getElementById("cands").innerHTML="";document.getElementById("out").innerHTML="";
+  runBtns().forEach(b=>b.disabled=true);
+  status.className="";status.textContent="標高を取得中…";
+  try{
+    let elev=elevManual;
+    const muniP=muniName(lat,lon).catch(()=>null);
+    if(elev==null){
+      const elevData=await apiJson("https://api.open-meteo.com/v1/elevation",{latitude:lat,longitude:lon});
+      elev=elevData.elevation?.[0];
+      if(!Number.isFinite(elev))throw new Error("指定地点の標高を取得できませんでした");
+    }
+    const muni=await muniP;
+    const customLabel=sessionStorage.getItem("pw-coord-label");
+    sessionStorage.removeItem("pw-coord-label");
+    const name=customLabel||(muni?`指定地点（${muni}）`:"指定地点");
+    await go({name,pref:"",lat,lon,elev,coord:true,elevManual:elevManual!=null});
+  }catch(e){
+    status.className="err";status.textContent=e.message+" — 時間をおいて再度お試しください";
+  }finally{runBtns().forEach(b=>b.disabled=false)}
+}
+
 // ---- 利用規約への同意ゲート ----
 // 同意しない限り本体フォームは操作不可(inert + pointer-events:none。キーボード操作も遮断)。
 // 同意はローカル保存し次回以降は再表示しない。
@@ -755,6 +787,13 @@ function applyHash(){
     if(dt2)di.value=dt2;
     if(seg3==="1h")document.querySelector('input[name="mstep"][value="1"]').checked=true;
     locateAndGo();return}
+  // 座標指定(docs/point.htmlから): "緯度,経度" または "緯度,経度,標高"。山名は数字で始まらないため衝突しない
+  const coordM=nm.match(/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:,(-?\d+(?:\.\d+)?))?$/);
+  if(coordM){
+    const[,latS,lonS,elevS]=coordM;
+    if(dt2)di.value=dt2;
+    if(seg3==="1h")document.querySelector('input[name="mstep"][value="1"]').checked=true;
+    locateCoordAndGo(+latS,+lonS,elevS!=null?+elevS:null);return}
   document.getElementById("mname").value=nm;
   if(dt2)di.value=dt2; // 範囲外(過去日など)で該当optionが無い場合は空になり、今日扱いになる
   if(seg3==="1h")document.querySelector('input[name="mstep"][value="1"]').checked=true;
