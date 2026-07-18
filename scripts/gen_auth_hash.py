@@ -21,6 +21,10 @@ import argparse
 import datetime
 import hashlib
 import secrets
+import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
 
 # 紛らわしい文字(0/O, 1/I/L)を除いた大文字英数字
 ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -35,6 +39,7 @@ def gen_code():
 def main():
     ap = argparse.ArgumentParser(description="認証コードのハッシュ生成")
     ap.add_argument("--code", help="コードを指定(省略時は自動生成)")
+    ap.add_argument("--ver", help="AUTH_VERを指定(省略時は今日の西暦年。同年内の再更新等に)")
     args = ap.parse_args()
 
     code = args.code if args.code else gen_code()
@@ -43,7 +48,7 @@ def main():
     digest = hashlib.pbkdf2_hmac(
         "sha256", norm.encode("utf-8"), salt.encode("utf-8"), ITERATIONS
     ).hex()
-    ver = str(datetime.date.today().year)
+    ver = args.ver if args.ver else str(datetime.date.today().year)
 
     print(f"認証コード(YAMAPモーメントにのみ記載。リポジトリに残さない): {code}")
     print()

@@ -30,6 +30,7 @@ python scripts/mountain_weather.py --name 富士山   # 動作確認(依存ゼ�
 | `docs/` | GitHub Pages公開物。`mountains.html`(対応山リスト・自動生成)・`how-it-works*.html`・`terms.html` |
 | `icons/` `manifest.json` | PWAアイコンとマニフェスト |
 | `skill/SKILL.md` | Claude Code スキル定義（「◯◯岳の予報を調べて」で自動実行） |
+| `skill/auth-renew/SKILL.md` | 認証コード更新スキル（「認証コードを更新して」で年次ローテーションを自動実行） |
 | `scripts/db_*.py gen_*.py check_*.py` | DB保守ツール群（下記パイプライン） |
 
 **公開URL**: https://halab18.github.io/sangaku-yohou/ （リポジトリ名は旧称 sangaku-yohou のまま）
