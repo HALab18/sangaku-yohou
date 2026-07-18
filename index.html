@@ -84,6 +84,18 @@ main{max-width:1080px;margin:0 auto;padding:26px 14px 8px}
 .gate small{display:block;font-weight:400;color:#999}
 .gate a{color:var(--link)}
 
+/* 認証コード (コード本体はソースに置かずハッシュ照合。scripts/gen_auth_hash.py 参照) */
+#authgate .ahead{font-weight:700;color:#444;font-size:.92em}
+#authgate .authrow{display:flex;flex-direction:row;gap:8px;margin:9px 0 7px}
+#authgate input{flex:1;min-width:0;border:1.5px solid #b9c5da;border-radius:8px;
+  padding:9px 12px;font-size:16px;letter-spacing:.12em;font-family:inherit}
+#authgate input:focus{outline:2px solid var(--sky);border-color:var(--sky)}
+#authgate button{flex:none;background:var(--night);color:#fff;border:0;border-radius:8px;
+  padding:0 18px;font-weight:600;font-size:.92em;cursor:pointer;font-family:inherit}
+#authgate button:disabled{opacity:.5;cursor:default}
+#authgate .authmsg{color:#a03415;font-size:.85em;font-weight:600;margin:0 0 5px}
+#authgate small{display:block;font-weight:400;color:#999;line-height:1.6}
+
 #appwrap{opacity:.4;pointer-events:none;filter:grayscale(60%);transition:opacity .2s,filter .2s}
 #appwrap.enabled{opacity:1;pointer-events:auto;filter:none}
 
@@ -270,6 +282,19 @@ footer a{color:var(--link)}
   <label><input type="checkbox" id="agree">
   <span><a href="docs/terms.html" target="_blank" rel="noopener">利用規約・免責事項</a>の内容を読み、同意します
   <small>本サービスは参考情報です（同意する方のみご利用いただけます）</small></span></label>
+</div>
+
+<div class="gate entry" id="authgate" hidden>
+  <div class="ahead">🔑 認証コードを入力してください（初回のみ）</div>
+  <form class="authrow" id="authform">
+    <input id="authcode" placeholder="7文字のコード" maxlength="20"
+      autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <button id="authbtn" type="submit">認証</button>
+  </form>
+  <p class="authmsg" id="authmsg" hidden></p>
+  <small>気象データの無料利用枠を維持するため、認証コードを入力した方のみご利用いただけます。
+  コードは<a href="https://yamap.com/moments/1715010" target="_blank" rel="noopener">YAMAPのモーメント（閲覧許可制）</a>に記載しています。
+  端末（ブラウザ）ごとに1回入力すれば以降は不要です。</small>
 </div>
 
 <div id="appwrap" inert>
@@ -777,6 +802,23 @@ async function locateCoordAndGo(lat,lon,elevManual){
 // 同意しない限り本体フォームは操作不可(inert + pointer-events:none。キーボード操作も遮断)。
 // 同意はローカル保存し次回以降は再表示しない。
 const AGREE_KEY="sangaku-yohou-agreed-v1";
+// 認証コード: コード本体は埋め込まず、PBKDF2ハッシュのみ照合する。
+// 定数3つ(VER/SALT/HASH)は scripts/gen_auth_hash.py の出力で年1回差し替える。
+// VERを変えると全端末のlocalStorageの認証済み印が無効になり、再入力が求められる。
+const AUTH_KEY="peakweather-auth",
+      AUTH_VER="2026",
+      AUTH_SALT="87d8b957337ae34b42890f9b2eed01d4",
+      AUTH_HASH="22c737a5964139051ec51e16cd47b2808d3a14ccfa1c5dea0440ef7bb8db7c39",
+      AUTH_ITER=300000;
+const isAuthed=()=>localStorage.getItem(AUTH_KEY)===AUTH_VER;
+async function hashAuthCode(code){
+  // gen_auth_hash.py と同一パラメータ(trim+大文字化 / PBKDF2-SHA256 / 反復回数)を維持すること
+  const norm=code.trim().toUpperCase(),enc=new TextEncoder();
+  const key=await crypto.subtle.importKey("raw",enc.encode(norm),"PBKDF2",false,["deriveBits"]);
+  const bits=await crypto.subtle.deriveBits(
+    {name:"PBKDF2",hash:"SHA-256",salt:enc.encode(AUTH_SALT),iterations:AUTH_ITER},key,256);
+  return[...new Uint8Array(bits)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
 function applyHash(){
   const hash=decodeURIComponent(location.hash.slice(1));
   if(!hash)return;
@@ -803,19 +845,40 @@ function applyHash(){
 }
 {
   const agreeBox=document.getElementById("agree"),wrap=document.getElementById("appwrap");
-  const enable=on=>{wrap.classList.toggle("enabled",on);wrap.toggleAttribute("inert",!on)};
-  const agreed=localStorage.getItem(AGREE_KEY)==="1";
-  if(agreed){agreeBox.checked=true;enable(true)}
+  const authGate=document.getElementById("authgate"),authIn=document.getElementById("authcode"),
+        authBtn=document.getElementById("authbtn"),authMsg=document.getElementById("authmsg");
+  // 規約同意と認証の両方が揃ったときだけアプリを有効化する
+  const ready=()=>agreeBox.checked&&isAuthed();
+  const sync=()=>{
+    authGate.hidden=isAuthed();
+    const on=ready();
+    wrap.classList.toggle("enabled",on);wrap.toggleAttribute("inert",!on);
+  };
+  const showErr=t=>{authMsg.textContent=t;authMsg.hidden=false};
+  if(localStorage.getItem(AGREE_KEY)==="1")agreeBox.checked=true;
+  sync();
   agreeBox.addEventListener("change",()=>{
-    if(agreeBox.checked){
-      localStorage.setItem(AGREE_KEY,"1");
-      enable(true);
-      applyHash();
-    }else{
-      localStorage.removeItem(AGREE_KEY);
-      enable(false);
-    }
+    if(agreeBox.checked)localStorage.setItem(AGREE_KEY,"1");
+    else localStorage.removeItem(AGREE_KEY);
+    sync();
+    if(agreeBox.checked&&ready())applyHash();
   });
+  async function tryAuth(){
+    if(!authIn.value.trim())return;
+    if(!crypto.subtle){ // file://直開きなど非セキュアコンテキストでは使えない
+      showErr("この開き方では認証できません。https または http://localhost 経由で開いてください");return}
+    authBtn.disabled=true;authMsg.hidden=true;
+    try{
+      if(await hashAuthCode(authIn.value)===AUTH_HASH){
+        localStorage.setItem(AUTH_KEY,AUTH_VER);
+        authIn.value="";
+        sync();
+        if(ready())applyHash();
+      }else showErr("認証コードが違います");
+    }catch(e){showErr("認証処理でエラーが発生しました")}
+    finally{authBtn.disabled=false}
+  }
+  document.getElementById("authform").addEventListener("submit",e=>{e.preventDefault();tryAuth()});
 }
 
 // 山名サジェスト (datalistはスマホの多くのブラウザで候補が出ないため独自実装)
@@ -875,7 +938,7 @@ document.querySelector(".hero-cta").addEventListener("click",e=>{
     o.textContent=`${md(d)}(${WJA[d.getDay()]})${i===0?" 今日":i===1?" 明日":""}`;
     di.appendChild(o);
   }
-  if(localStorage.getItem(AGREE_KEY)==="1")applyHash();
+  if(localStorage.getItem(AGREE_KEY)==="1"&&isAuthed())applyHash();
 }
 </script>
 </main></body>
