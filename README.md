@@ -151,7 +151,9 @@ CSVの形式、Webアプリ版（index.html）内蔵DBとの同期、Open-Meteo 
 - 気象データ: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0)。無料APIは**非商用利用向け**です。
   商用利用する場合は Open-Meteo の有料プランを契約してください
 - 山岳座標の照合: 国土地理院 地名検索API・標高API（出典: 国土地理院）
-- 本ツールのライセンス: [MIT License](LICENSE)
+- 本ツールのライセンス: [PeakWeather 利用許諾条件](LICENSE)。無償でご利用いただけますが、
+  著作権は放棄しません。複製・改変・再配布・商用利用には事前の許諾が必要です
+  （2026年7月18日 / ver 1.01 にMIT Licenseから変更。それ以前に取得された版は遡及しません）
 
 ## 利用規約・免責事項
 
