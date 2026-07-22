@@ -5,13 +5,10 @@
 
 ---
 
-## ▶ 次の再開ポイント: スマホ左余白の微調整が branch `mobile-left-gutter` に未pushで残っている
+## ▶ 次の再開ポイント: 未着手のタスクなし（すべて master 反映・GitHub Pages 公開済み・未コミットなし）
 
-**次にやること**: `mobile-left-gutter` ブランチ（下の 07-22 左余白のログ参照）を確認し、
-問題なければ `git push origin mobile-left-gutter:master` で master 反映。
-※index.html 1行（`main` の左パディング 14→22px、スマホのみ）。Browser pane で検証済み。
-
-**現状（それ以外）**: すべて master 反映・GitHub Pages 公開済み。
+**現状**: すべて master 反映・公開済み。自宅で再開する場合は最初に `git pull` してから作業開始。
+- **スマホ左余白**（07-22 左余白のログ）: `main` の左パディング 14→22px（スマホのみ）。commit `1314708` で反映済み。
 - **予報表の sticky 化**（07-22 sticky のログ）: ヘッダ行・先頭列を固定。commit `5edf8aa` で master 反映済み。
 - **日代表天気ロジック**（07-22 のログ）: 日別表の天気を hourly から自前算出。commit `645feb5` で
   master 反映済み。CLI/Web parity テスト済み。
