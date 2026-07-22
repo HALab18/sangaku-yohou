@@ -689,7 +689,7 @@ async function run(mt){
     const ws=wsArr.length?Math.max(...wsArr):null;
     const wd2=rw.find(x=>x[0]===ws)?.[1];
     const dep=idxs.map(i=>h.snow_depth?.[i]).filter(v=>v!=null);
-    pastRows.push({d:new Date(dt2),code:wxByDate.get(ds)?.code??d.weather_code[di],notes:wxByDate.get(ds)?.notes||[],tmin:d.temperature_2m_min[di],tmax:d.temperature_2m_max[di],
+    pastRows.push({d:new Date(dt2),code:wxByDate.get(ds)?.code??d.weather_code[di],notes:wxByDate.get(ds)?.notes||[],phrase:wxByDate.get(ds)?.phrase,tmin:d.temperature_2m_min[di],tmax:d.temperature_2m_max[di],
       ws,wd:wd2,pr:d.precipitation_sum[di],sf:d.snowfall_sum?.[di],
       depth:dep.length?Math.max(...dep):null});
   }
@@ -742,7 +742,7 @@ async function run(mt){
       if(best==null||order[v[0]]<order[best[0]])best=v;
     }
     const dep=idxs.map(i=>h.snow_depth?.[i]).filter(v=>v!=null);
-    rows.push({d:new Date(dt2),idx:dayIdxV,eve:evening,code:wxByDate.get(ds)?.code??d.weather_code[di],notes:wxByDate.get(ds)?.notes||[],
+    rows.push({d:new Date(dt2),idx:dayIdxV,eve:evening,code:wxByDate.get(ds)?.code??d.weather_code[di],notes:wxByDate.get(ds)?.notes||[],phrase:wxByDate.get(ds)?.phrase,
       tmin:d.temperature_2m_min[di],tmax:d.temperature_2m_max[di],
       ws:wsMax,wd:wdMax,pr:d.precipitation_sum[di],prob:d.precipitation_probability_max[di],
       sf:d.snowfall_sum?.[di],depth:dep.length?Math.max(...dep):null,
