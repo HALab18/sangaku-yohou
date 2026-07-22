@@ -103,12 +103,12 @@ main{max-width:1080px;margin:0 auto;padding:26px 14px 8px 22px}
   box-shadow:0 2px 12px rgba(30,45,74,.10);scroll-margin-top:12px}
 form{display:flex;flex-direction:column;gap:14px}
 .f{display:flex;flex-direction:column;gap:5px;font-size:.82em;font-weight:600;color:#556;margin:0}
-.lrow{display:flex;justify-content:space-between;align-items:baseline;gap:5px 10px;flex-wrap:wrap}
+.lrow{display:flex;justify-content:space-between;align-items:baseline;gap:5px 8px;flex-wrap:wrap}
 .llabel{white-space:nowrap}
 .lrow .listlink{color:var(--link);font-weight:600;text-decoration:none;white-space:nowrap}
 .lrow .listlink:hover{text-decoration:underline}
 /* リンク2つは常にひとまとまり。1行に収まらない狭幅では両リンクごと右寄せで次行へ落とす(語中折返しを防ぐ) */
-.linkgrp{display:flex;gap:10px;flex-wrap:nowrap;flex-shrink:0;margin-left:auto}
+.linkgrp{display:flex;gap:8px;flex-wrap:nowrap;flex-shrink:0;margin-left:auto}
 input,select{font-size:16px;padding:11px 12px;border:1.5px solid var(--field);border-radius:10px;
   background:#fff;width:100%;font-family:inherit}
 input:focus,select:focus{outline:2px solid var(--night);outline-offset:1px}
@@ -333,7 +333,7 @@ footer a{color:var(--link)}
 <div class="formcard entry">
 <form id="f">
   <label class="f mfield">
-    <span class="lrow"><span class="llabel">山名（直接入力もできます）</span><span class="linkgrp">
+    <span class="lrow"><span class="llabel">山名（直接入力可能）</span><span class="linkgrp">
       <a class="listlink" href="docs/point.html">座標を指定 ▸</a>
       <a class="listlink" href="docs/mountains.html"><svg class="mk" aria-hidden="true"><use href="#mkico"/></svg>対応山リスト ▸</a>
     </span></span>

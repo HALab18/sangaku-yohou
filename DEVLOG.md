@@ -65,6 +65,7 @@ phrase追加済みで正常だったため気づけず＝関数単体テスト�
 `<span class="llabel">`で包んで `white-space:nowrap`、`.linkgrp` を `flex-wrap:nowrap;flex-shrink:0;
 margin-left:auto`＋`.lrow{flex-wrap:wrap}` にし、収まらない時は両リンクごと右寄せで次行へ落とす。
 390px以上(iPhone 12〜)は1行(ラベル左・リンク右)で理想配置、375px以下でも2行で整然。実測で確認。
+さらにラベルを「山名（直接入力可能）」に短縮＋gap微調整(lrow/linkgrp 8px)し、**360px以上で1行**に収まるよう調整(360/375/390で実測1行)。
 
 ---
 
