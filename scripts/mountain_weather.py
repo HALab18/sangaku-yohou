@@ -65,6 +65,120 @@ def wcode(code):
     return WMO_CODES.get(int(code), f"code{int(code)}")
 
 
+# ---- 日代表天気 (index.html の summarizeDailyWeather と同一ロジック) ----
+# Open-Meteo の daily.weather_code は24hのmaxで、短時間の霧/霧雨が晴主体の日を乗っ取る。
+# 代わりに hourly.weather_code から窓(4-17時)で日代表を決める: 悪天は昇格保持・軽微降水は注記に降格。
+WMETA = {  # code -> (category, severity)
+    0: ("clear", 0), 1: ("clear", 1), 2: ("partly", 2), 3: ("cloudy", 3),
+    45: ("fog", 4), 48: ("fog", 4),
+    51: ("drizzle", 5), 53: ("drizzle", 5), 55: ("drizzle", 6), 56: ("drizzle", 6), 57: ("drizzle", 6),
+    61: ("rain", 7), 63: ("rain", 8), 65: ("rain", 9), 66: ("rain", 9), 67: ("rain", 9),
+    71: ("snow", 7), 73: ("snow", 8), 75: ("snow", 10), 77: ("snow", 7),
+    80: ("showers", 7), 81: ("showers", 8), 82: ("showers", 10),
+    85: ("snowshowers", 9), 86: ("snowshowers", 10),
+    95: ("thunder", 11), 96: ("thunder", 12), 99: ("thunder", 12),
+}
+WX_WINDOW = (4, 17)  # 集約する時間帯窓(両端含む)
+SAFETY_OVERRIDE = {65, 66, 67, 75, 82, 85, 86, 95, 96, 99}  # 窓内に1hでもあれば日代表に昇格(安全側)
+PRECIP_CATS = {"fog", "drizzle", "rain", "showers", "snow", "snowshowers", "thunder"}
+CAT_LABEL = {"fog": "霧", "drizzle": "霧雨", "rain": "雨", "showers": "にわか雨",
+             "snow": "雪", "snowshowers": "にわか雪", "thunder": "雷雨"}
+TOD_ORDER = ["明け方", "朝", "昼前", "昼過ぎ", "夕方"]
+
+
+def _wcat(code):
+    return WMETA[code][0] if code in WMETA else "unknown"
+
+
+def _wsev(code):
+    return WMETA[code][1] if code in WMETA else 0
+
+
+def _time_of_day(hr):
+    if hr <= 6:
+        return "明け方"
+    if hr <= 9:
+        return "朝"
+    if hr <= 11:
+        return "昼前"
+    if hr <= 14:
+        return "昼過ぎ"
+    return "夕方"
+
+
+def _timing_label(hours):
+    labels = sorted(dict.fromkeys(_time_of_day(h) for h in hours), key=TOD_ORDER.index)
+    if len(labels) >= 4:
+        return "日中"
+    if len(labels) >= 2:
+        return f"{labels[0]}〜{labels[-1]}"
+    return labels[0]
+
+
+def _add_precip_notes(win, rep_cat, notes, skip_hours):
+    seen = {}
+    for e in win:
+        if e["hour"] in skip_hours:
+            continue
+        cat = _wcat(e["code"])
+        if cat == rep_cat or cat not in PRECIP_CATS:
+            continue
+        seen.setdefault(cat, []).append(e["hour"])
+    for cat, hours in seen.items():
+        notes.append(f"{_timing_label(hours)}に{CAT_LABEL[cat]}")
+
+
+def summarize_daily_weather(times, codes):
+    """hourly.time / hourly.weather_code から日ごとの代表天気を決める。
+    戻り値: {date_iso: {"code": int, "notes": [str, ...]}}。表示ラベルは既存 wcode を使う。"""
+    by_date = {}
+    for i, t in enumerate(times):
+        by_date.setdefault(t[:10], []).append({"hour": int(t[11:13]), "code": codes[i]})
+    result = {}
+    for date, entries in by_date.items():
+        win = [e for e in entries if WX_WINDOW[0] <= e["hour"] <= WX_WINDOW[1]] or entries
+        notes = []
+        # 第1層: 安全オーバーライド(悪天は無条件で日代表)
+        overrides = [e for e in win if e["code"] in SAFETY_OVERRIDE]
+        if overrides:
+            overrides.sort(key=lambda e: _wsev(e["code"]), reverse=True)
+            rep = overrides[0]["code"]
+            rep_cat = _wcat(rep)
+            # 代表(悪天)自身の時間注記は付けない: 天気列に既に出るため冗長。他の降水系のみ注記に残す。
+            _add_precip_notes(win, rep_cat, notes, {e["hour"] for e in overrides})
+            result[date] = {"code": rep, "notes": notes}
+            continue
+        # 第2層: 日中の時間帯多数決(同数なら重症度が高い方)
+        cat_hours = {}
+        for e in win:
+            cat_hours.setdefault(_wcat(e["code"]), []).append(e["hour"])
+        rep_cat, rep_count, rep_sev = None, -1, -1
+        for cat, hours in cat_hours.items():
+            count = len(hours)
+            max_sev = max(_wsev(e["code"]) for e in win if _wcat(e["code"]) == cat)
+            if count > rep_count or (count == rep_count and max_sev > rep_sev):
+                rep_cat, rep_count, rep_sev = cat, count, max_sev
+        code_count = {}
+        for e in win:
+            if _wcat(e["code"]) != rep_cat:
+                continue
+            code_count[e["code"]] = code_count.get(e["code"], 0) + 1
+        rep_code, best, best_sev = None, -1, -1
+        for code, cnt in code_count.items():
+            sev = _wsev(code)
+            if cnt > best or (cnt == best and sev > best_sev):
+                rep_code, best, best_sev = code, cnt, sev
+        # 第3層: 代表でない降水系は注記に降格
+        _add_precip_notes(win, rep_cat, notes, set())
+        result[date] = {"code": rep_code, "notes": notes}
+    return result
+
+
+def wx_note_text(notes):
+    """注記リストを天気セル併記用のテキストにする(markdown表を壊さない全角括弧)。"""
+    return f"（{' / '.join(notes)}）" if notes else ""
+
+
 def http_json(url, params, retries=3):
     """一時的な通信エラー(接続断・SSLハンドシェイクタイムアウト・5xx等)は指数バックオフで再試行する。
     予報モデルの更新時刻によっては end_date が16日先まで受け付けられず HTTP 400 になるため、
@@ -327,6 +441,7 @@ def past_summary_rows(data, dates, lo, hi, t):
     """直近数日の実況(モデル解析値)の日別行"""
     h, d = data["hourly"], data["daily"]
     times = h["time"]
+    wx = summarize_daily_weather(times, h["weather_code"])
     depth_all = h.get("snow_depth") or []
     sf_all = d.get("snowfall_sum") or [None] * len(d["time"])
     rows = []
@@ -342,7 +457,9 @@ def past_summary_rows(data, dates, lo, hi, t):
         wd = next((dd for s, dd in rws if s == ws), None)
         depth = max((depth_all[i] for i in idxs if i < len(depth_all) and depth_all[i] is not None),
                     default=None)
-        rows.append({"date": date, "code": d["weather_code"][di],
+        wxd = wx.get(date.isoformat(), {})
+        rows.append({"date": date, "code": wxd.get("code", d["weather_code"][di]),
+                     "notes": wxd.get("notes", []),
                      "tmin": d["temperature_2m_min"][di], "tmax": d["temperature_2m_max"][di],
                      "ws": ws, "wd": wd, "pr": d["precipitation_sum"][di], "sf": sf_all[di],
                      "depth": depth})
@@ -360,7 +477,7 @@ def print_past_summary(rows, has_snow):
     for r in rows:
         wj = "月火水木金土日"[r["date"].weekday()]
         snow_c = f" {snow_cell(r['depth'], r['sf'])} |" if has_snow else ""
-        print(f"| {r['date'].strftime('%m/%d')}({wj}) | {wcode(r['code'])} "
+        print(f"| {r['date'].strftime('%m/%d')}({wj}) | {wcode(r['code'])}{wx_note_text(r.get('notes'))} "
               f"| {fnum(r['tmin'], '{:.0f}')}〜{fnum(r['tmax'], '{:.0f}')}℃ "
               f"| {wdir(r['wd'])} {fnum(r['ws'], '{:.1f}')}m/s "
               f"| {fnum(r['pr'], '{:.1f}')}mm |{snow_c}")
@@ -461,6 +578,7 @@ def daily_summary_rows(data, dates, lo, hi, t, elev):
     h = data["hourly"]
     d = data["daily"]
     times = h["time"]
+    wx = summarize_daily_weather(times, h["weather_code"])
     depth_all = h.get("snow_depth") or []
     sf_all = d.get("snowfall_sum") or [None] * len(d["time"])
     rows = []
@@ -500,8 +618,10 @@ def daily_summary_rows(data, dates, lo, hi, t, elev):
             evening = block_index(ws_e, pr_e, cape_e, th) == "C"
         depth = max((depth_all[i] for i in idxs if i < len(depth_all) and depth_all[i] is not None),
                     default=None)
+        wxd = wx.get(date.isoformat(), {})
         rows.append({
-            "date": date, "idx": day_idx, "evening": evening, "code": d["weather_code"][di],
+            "date": date, "idx": day_idx, "evening": evening,
+            "code": wxd.get("code", d["weather_code"][di]), "notes": wxd.get("notes", []),
             "tmin": d["temperature_2m_min"][di], "tmax": d["temperature_2m_max"][di],
             "ws": ws_max, "wd": wd_max,
             "pr": d["precipitation_sum"][di], "prob": d["precipitation_probability_max"][di],
@@ -521,7 +641,7 @@ def print_daily_summary(rows, title, has_snow=False):
         wj = "月火水木金土日"[r["date"].weekday()]
         mark = IDX_MARK[r["idx"]] + (" ⚠夕方" if r.get("evening") else "")
         snow_c = f" {snow_cell(r.get('depth'), r.get('sf'))} |" if has_snow else ""
-        print(f"| {r['date'].strftime('%m/%d')}({wj}) | {mark} | {wcode(r['code'])} "
+        print(f"| {r['date'].strftime('%m/%d')}({wj}) | {mark} | {wcode(r['code'])}{wx_note_text(r.get('notes'))} "
               f"| {r['view']} | {fnum(r['tmin'], '{:.0f}')}〜{fnum(r['tmax'], '{:.0f}')}℃ "
               f"| {wdir(r['wd'])} {fnum(r['ws'], '{:.1f}')}m/s "
               f"| {fnum(r['pr'], '{:.1f}')}mm | {fnum(r['prob'])}% |{snow_c}")
