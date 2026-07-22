@@ -5,9 +5,13 @@
 
 ---
 
-## ▶ 次の再開ポイント: 未着手のタスクなし（日代表天気ロジックも master 反映・公開済み）
+## ▶ 次の再開ポイント: 予報表の sticky 化が branch `sticky-table-mobile` に未pushで残っている
 
-**現状**: すべて master 反映・GitHub Pages 公開済み。未コミットの作業なし。
+**次にやること**: `sticky-table-mobile` ブランチ（下の 07-22 sticky ログ参照）を確認し、
+問題なければ `git push origin sticky-table-mobile:master` で master 反映（GitHub Pages 公開）。
+※index.html の CSS のみの変更。Browser pane で sticky 動作を検証済み（横=日付列・縦=ヘッダが固定）。
+
+**現状（それ以外）**: すべて master 反映・GitHub Pages 公開済み。
 - **日代表天気ロジック**（07-22 のログ）: 日別表の天気を hourly から自前算出。commit `645feb5` で
   master 反映済み。CLI/Web parity テスト済み。
 - 山岳DB **604座** 確定済み（`tenki_mountain_list.xlsx` からの追加は完全に打ち止め。
@@ -20,6 +24,32 @@
 - index.html / terms.html から GitHubリポジトリへの記載・リンクは削除済み（ユーザー指示）
 - **ver 1.01 / 独自ライセンス**（07-20 のログ）。以後、大きな改定ごとに版番号を振る運用
 **このブランチのマージ以外に、新しい指示がない限り着手すべき作業は無い。**
+
+---
+
+## 2026-07-22 予報表をスマホで見やすく: ヘッダ行と先頭列を sticky 固定
+
+**背景（問題）**
+- スマホで予報表を見ると、横スクロールで左端の日付/時刻列が消え、縦スクロールで項目見出し（ヘッダ）が
+  消えて、どの行・どの列の値か分からなくなっていた。表は最大13列×24行で必ずスクロールが要る。
+
+**やったこと**（`index.html` の `<style>` のみ・CSS変更）
+- `.tbl` を `max-height:75vh; overflow:auto; overscroll-behavior:contain` の**縦横2軸スクロールボックス**化。
+- `th{position:sticky; top:0; z-index:2}` で**ヘッダ行を上端固定**、
+  `td:first-child{position:sticky; left:0; z-index:1}`＋`th:first-child{left:0; z-index:3}` で
+  **先頭列（日付/時刻）を左端固定**。偶数行の先頭セルも `#eef1f6` を明示して不透明を担保。
+  固定列の右側区切りは `box-shadow:inset -1px 0 0 var(--line)`。
+
+**判断の根拠 / 次に触るとき**
+- **なぜ max-height が必須か**: `overflow-x:auto` を指定すると CSS 仕様で `overflow-y` も `auto` に
+  強制されるが、高さ上限が無いと縦スクロールがページ側で起き、`sticky top:0` が効かない。
+  高さを bound して `.tbl` 自身を縦スクロール基準にすることで両軸の sticky が成立する。
+- **border-collapse と sticky の相性**: 境界線に依存せず背景色＋box-shadow で区切るのが安全
+  （スクロール中の線抜けを回避）。z-index は 角(3)>ヘッダ(2)>本文先頭列(1)。
+- **検証**: Browser pane を mobile(375px) にし、13列×24行のモック表を `#out` に流し込んで確認。
+  scrollLeft=400/scrollTop=300 の状態で 先頭列 left=0・ヘッダ top=0・固定セル背景が不透明 を JS で実測。
+  API はサンドボックスから叩けないためモックで検証（実表示は生成表と同一クラス構造）。
+- 対象は生成される4表すべて（先頭列が日付or時刻の共通構造）。desktop も同ルール（内容が低ければ非スクロール）。
 
 ---
 

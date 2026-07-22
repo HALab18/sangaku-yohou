@@ -174,11 +174,16 @@ h2{color:var(--night);font-size:1.08em;margin:20px 0 8px;display:flex;align-item
 h2::before{content:"";flex:none;width:20px;height:14px;margin-top:.32em;
   background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2076%2052'%3E%3Cpath%20d='M4%2048L28%208%2040%2027%2050%2014%2072%2048Z'%20fill='none'%20stroke='%235b87c5'%20stroke-width='7'%20stroke-linejoin='round'/%3E%3Cpath%20d='M21.5%2019L28%208l6.5%2011-3.3-3.4-3.2%204-3.2-4Z'%20fill='%235b87c5'/%3E%3Cpath%20d='M45.8%2020.5L50%2014l4.2%206.5-2.2-2.3-2%202.6-2-2.6Z'%20fill='%235b87c5'/%3E%3C/svg%3E") no-repeat center/contain}
 ul.meta{margin:0 0 8px;padding-left:1.2em;color:#555;font-size:.9em}
-.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 4px}
+.tbl{max-height:75vh;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;margin:6px 0 4px}
 table{border-collapse:collapse;white-space:nowrap;width:100%}
-th{background:var(--slate);color:#fff;padding:6px 9px;font-weight:600;font-size:.9em}
+th{background:var(--slate);color:#fff;padding:6px 9px;font-weight:600;font-size:.9em;position:sticky;top:0;z-index:2}
 td{padding:5px 9px;border-bottom:1px solid var(--line);text-align:center;background:#fff}
 tr:nth-child(even) td{background:#eef1f6}
+/* スマホ対策: ヘッダ行(上)と先頭列(左=日付/時刻)をスクロール時に固定 */
+th:first-child{left:0;z-index:3}
+td:first-child{position:sticky;left:0;z-index:1;background:#fff}
+tr:nth-child(even) td:first-child{background:#eef1f6}
+th:first-child,td:first-child{box-shadow:inset -1px 0 0 var(--line)}
 .b{display:inline-block;min-width:2.6em;padding:1px 7px;border-radius:10px;font-weight:700;font-size:.92em}
 .b-a{background:#d8efe1;color:#1c5b3f}.b-b{background:#fdeec9;color:#7b5e00}.b-c{background:#f9d9cf;color:#a03415}
 .v-ex{color:#1c5b3f;font-weight:700}.v-ok{color:#2d6a4f}.v-so{color:#7b5e00}.v-ng{color:#a03415}
