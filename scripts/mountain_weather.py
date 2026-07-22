@@ -83,6 +83,7 @@ SAFETY_OVERRIDE = {65, 66, 67, 75, 82, 85, 86, 95, 96, 99}  # 窓内に1hでも�
 PRECIP_CATS = {"fog", "drizzle", "rain", "showers", "snow", "snowshowers", "thunder"}
 CAT_LABEL = {"fog": "霧", "drizzle": "霧雨", "rain": "雨", "showers": "にわか雨",
              "snow": "雪", "snowshowers": "にわか雪", "thunder": "雷雨"}
+LABEL2CAT = {label: cat for cat, label in CAT_LABEL.items()}  # 逆引き(注記の重複防止用)
 TOD_ORDER = ["明け方", "朝", "昼前", "昼過ぎ", "夕方"]
 
 
@@ -115,13 +116,13 @@ def _timing_label(hours):
     return labels[0]
 
 
-def _add_precip_notes(win, rep_cat, notes, skip_hours):
+def _add_precip_notes(win, rep_cat, notes, skip_hours, exclude_cats=frozenset()):
     seen = {}
     for e in win:
         if e["hour"] in skip_hours:
             continue
         cat = _wcat(e["code"])
-        if cat == rep_cat or cat not in PRECIP_CATS:
+        if cat == rep_cat or cat not in PRECIP_CATS or cat in exclude_cats:
             continue
         seen.setdefault(cat, []).append(e["hour"])
     for cat, hours in seen.items():
@@ -143,6 +144,10 @@ LABEL_ICON = {label: icon for label, icon in WBASE.values()}
 
 def _wbase_label(code):
     return WBASE[_wcat(code)][0] if _wcat(code) in WBASE else None
+
+
+def _wbase_icon(code):
+    return WBASE[_wcat(code)][1] if _wcat(code) in WBASE else None
 
 
 def _dominant(sub):
@@ -220,6 +225,10 @@ def summarize_daily_weather(times, codes):
     for date, entries in by_date.items():
         win = [e for e in entries if WX_WINDOW[0] <= e["hour"] <= WX_WINDOW[1]] or entries
         notes = []
+        # フレーズを先に決め、フレーズに出す降水カテゴリは注記から除外(重複防止)。3つ目以降の降水系だけ注記に残る。
+        phrase = day_weather_phrase(win)
+        phrase_cats = {LABEL2CAT[s["label"]] for s in (phrase or [])
+                       if s.get("label") in LABEL2CAT}
         # 第1層: 安全オーバーライド(悪天は無条件で日代表)
         overrides = [e for e in win if e["code"] in SAFETY_OVERRIDE]
         if overrides:
@@ -227,8 +236,11 @@ def summarize_daily_weather(times, codes):
             rep = overrides[0]["code"]
             rep_cat = _wcat(rep)
             # 代表(悪天)自身の時間注記は付けない: 天気列に既に出るため冗長。他の降水系のみ注記に残す。
-            _add_precip_notes(win, rep_cat, notes, {e["hour"] for e in overrides})
-            result[date] = {"code": rep, "notes": notes, "phrase": day_weather_phrase(win)}
+            _add_precip_notes(win, rep_cat, notes, {e["hour"] for e in overrides}, phrase_cats)
+            # 単一天気の日は従来の詳細ラベル(快晴/弱/強等)を維持しアイコンだけ付ける
+            if phrase and len(phrase) == 1:
+                phrase = [{"label": wcode(rep), "icon": _wbase_icon(rep)}]
+            result[date] = {"code": rep, "notes": notes, "phrase": phrase}
             continue
         # 第2層: 日中の時間帯多数決(同数なら重症度が高い方)
         cat_hours = {}
@@ -251,8 +263,11 @@ def summarize_daily_weather(times, codes):
             if cnt > best or (cnt == best and sev > best_sev):
                 rep_code, best, best_sev = code, cnt, sev
         # 第3層: 代表でない降水系は注記に降格
-        _add_precip_notes(win, rep_cat, notes, set())
-        result[date] = {"code": rep_code, "notes": notes, "phrase": day_weather_phrase(win)}
+        _add_precip_notes(win, rep_cat, notes, set(), phrase_cats)
+        # 単一天気の日は従来の詳細ラベル(快晴/晴れ時々曇り/弱/強等)を維持しアイコンだけ付ける
+        if phrase and len(phrase) == 1:
+            phrase = [{"label": wcode(rep_code), "icon": _wbase_icon(rep_code)}]
+        result[date] = {"code": rep_code, "notes": notes, "phrase": phrase}
     return result
 
 
@@ -559,7 +574,7 @@ def print_past_summary(rows, has_snow):
     for r in rows:
         wj = "月火水木金土日"[r["date"].weekday()]
         snow_c = f" {snow_cell(r['depth'], r['sf'])} |" if has_snow else ""
-        wx = wx_phrase_text(r["phrase"]) if r.get("phrase") else wcode(r["code"]) + wx_note_text(r.get("notes"))
+        wx = (wx_phrase_text(r["phrase"]) if r.get("phrase") else wcode(r["code"])) + wx_note_text(r.get("notes"))
         print(f"| {r['date'].strftime('%m/%d')}({wj}) | {wx} "
               f"| {fnum(r['tmin'], '{:.0f}')}〜{fnum(r['tmax'], '{:.0f}')}℃ "
               f"| {wdir(r['wd'])} {fnum(r['ws'], '{:.1f}')}m/s "
@@ -725,7 +740,7 @@ def print_daily_summary(rows, title, has_snow=False):
         wj = "月火水木金土日"[r["date"].weekday()]
         mark = IDX_MARK[r["idx"]] + (" ⚠夕方" if r.get("evening") else "")
         snow_c = f" {snow_cell(r.get('depth'), r.get('sf'))} |" if has_snow else ""
-        wx = wx_phrase_text(r["phrase"]) if r.get("phrase") else wcode(r["code"]) + wx_note_text(r.get("notes"))
+        wx = (wx_phrase_text(r["phrase"]) if r.get("phrase") else wcode(r["code"])) + wx_note_text(r.get("notes"))
         print(f"| {r['date'].strftime('%m/%d')}({wj}) | {mark} | {wx} "
               f"| {r['view']} | {fnum(r['tmin'], '{:.0f}')}〜{fnum(r['tmax'], '{:.0f}')}℃ "
               f"| {wdir(r['wd'])} {fnum(r['ws'], '{:.1f}')}m/s "
