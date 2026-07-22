@@ -5,13 +5,10 @@
 
 ---
 
-## ▶ 次の再開ポイント: 予報表の sticky 化が branch `sticky-table-mobile` に未pushで残っている
+## ▶ 次の再開ポイント: 未着手のタスクなし（sticky化・日代表天気とも master 反映・公開済み）
 
-**次にやること**: `sticky-table-mobile` ブランチ（下の 07-22 sticky ログ参照）を確認し、
-問題なければ `git push origin sticky-table-mobile:master` で master 反映（GitHub Pages 公開）。
-※index.html の CSS のみの変更。Browser pane で sticky 動作を検証済み（横=日付列・縦=ヘッダが固定）。
-
-**現状（それ以外）**: すべて master 反映・GitHub Pages 公開済み。
+**現状**: すべて master 反映・GitHub Pages 公開済み。未コミットの作業なし。
+- **予報表の sticky 化**（07-22 sticky のログ）: ヘッダ行・先頭列を固定。commit `5edf8aa` で master 反映済み。
 - **日代表天気ロジック**（07-22 のログ）: 日別表の天気を hourly から自前算出。commit `645feb5` で
   master 反映済み。CLI/Web parity テスト済み。
 - 山岳DB **604座** 確定済み（`tenki_mountain_list.xlsx` からの追加は完全に打ち止め。
