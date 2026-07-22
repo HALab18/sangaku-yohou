@@ -5,13 +5,11 @@
 
 ---
 
-## ▶ 次の再開ポイント: 日代表天気ロジックの実装が branch `daily-weather-summary` に未マージで残っている
+## ▶ 次の再開ポイント: 未着手のタスクなし（日代表天気ロジックも master 反映・公開済み）
 
-**次にやること**: `daily-weather-summary` ブランチの内容（下の 07-22 ログ参照）を確認し、
-問題なければ `git push origin daily-weather-summary:master` で master 反映（GitHub Pages 公開）。
-※未コミット。コミット/プッシュはユーザー指示があってから。
-
-**現状（それ以外）**: すべて master 反映・GitHub Pages 公開済み。
+**現状**: すべて master 反映・GitHub Pages 公開済み。未コミットの作業なし。
+- **日代表天気ロジック**（07-22 のログ）: 日別表の天気を hourly から自前算出。commit `645feb5` で
+  master 反映済み。CLI/Web parity テスト済み。
 - 山岳DB **604座** 確定済み（`tenki_mountain_list.xlsx` からの追加は完全に打ち止め。
   未収録の元リスト行は標高100m未満2座・渓谷1座・額取山878mの重複1座で、理由込みで確定済み）
 - 予報の取得経路は **3つ**: ①山名検索 ②GPS現在地（`#gps`ハッシュ、市町村名つき見出し）
