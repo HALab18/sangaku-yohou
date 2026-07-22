@@ -5,9 +5,13 @@
 
 ---
 
-## ▶ 次の再開ポイント: 未着手のタスクなし（sticky化・日代表天気とも master 反映・公開済み）
+## ▶ 次の再開ポイント: スマホ左余白の微調整が branch `mobile-left-gutter` に未pushで残っている
 
-**現状**: すべて master 反映・GitHub Pages 公開済み。未コミットの作業なし。
+**次にやること**: `mobile-left-gutter` ブランチ（下の 07-22 左余白のログ参照）を確認し、
+問題なければ `git push origin mobile-left-gutter:master` で master 反映。
+※index.html 1行（`main` の左パディング 14→22px、スマホのみ）。Browser pane で検証済み。
+
+**現状（それ以外）**: すべて master 反映・GitHub Pages 公開済み。
 - **予報表の sticky 化**（07-22 sticky のログ）: ヘッダ行・先頭列を固定。commit `5edf8aa` で master 反映済み。
 - **日代表天気ロジック**（07-22 のログ）: 日別表の天気を hourly から自前算出。commit `645feb5` で
   master 反映済み。CLI/Web parity テスト済み。
@@ -21,6 +25,21 @@
 - index.html / terms.html から GitHubリポジトリへの記載・リンクは削除済み（ユーザー指示）
 - **ver 1.01 / 独自ライセンス**（07-20 のログ）。以後、大きな改定ごとに版番号を振る運用
 **このブランチのマージ以外に、新しい指示がない限り着手すべき作業は無い。**
+
+---
+
+## 2026-07-22 スマホの左余白を少し広げる（左親指のページスクロール用ゆとり）
+
+**背景**: 予報表が sticky 化で縦横スクロールボックスになり、表の上のドラッグは表スクロールになる。
+表の外の左余白が 14px と細く、左親指でページ全体を送りづらかった。
+
+**やったこと**: [index.html:61](index.html:61) の `main` パディングを4値指定にし**左だけ 14→22px**へ
+（`padding:26px 14px 8px 22px`）。右は 14px 維持。desktop は `@media(min-width:700px)` の
+`padding:34px 24px 12px` が勝つため**無影響**（実測 desktop=24/24, mobile=22/14）。
+
+**根拠 / 次に触るとき**: `main` 内要素は同じ左基準に揃うので全体が一緒に少し右へ寄るだけで整列は保たれ、
+ビューポート左端との隙間だけ広がる。width:auto なので横オーバーフローは出ない（実測 scrollWidth=innerWidth）。
+量はお好みで前後可（22px は「ほんの少し」の落とし所）。
 
 ---
 
