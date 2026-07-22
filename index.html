@@ -458,7 +458,7 @@ function summarizeDailyWeather(times,codes){
       // 代表(悪天)自身の時間注記は付けない: 天気列に既に出るため冗長。他の降水系のみ注記に残す。
       addPrecipNotes(win,repCat,notes,new Set(overrides.map(e=>e.hour)),phraseCats);
       // 単一天気の日は従来の詳細ラベル(快晴/弱/強等)を維持しアイコンだけ付ける
-      if(phrase&&phrase.length===1)phrase=[{label:wcode(rep),icon:wbaseIcon(rep)}];
+      if(phrase&&phrase.length===1)phrase=singleCodePhrase(rep);
       result.push({date,code:rep,notes,phrase});
       continue;
     }
@@ -478,7 +478,7 @@ function summarizeDailyWeather(times,codes){
     // 第3層: 代表でない降水系は注記に降格
     addPrecipNotes(win,repCat,notes,new Set(),phraseCats);
     // 単一天気の日は従来の詳細ラベル(快晴/晴れ時々曇り/弱/強等)を維持しアイコンだけ付ける
-    if(phrase&&phrase.length===1)phrase=[{label:wcode(repCode),icon:wbaseIcon(repCode)}];
+    if(phrase&&phrase.length===1)phrase=singleCodePhrase(repCode);
     result.push({date,code:repCode,notes,phrase});
   }
   return result;
@@ -532,6 +532,12 @@ function dayWeatherPhrase(win){
   return[seg(P),{conn},seg(S)];
 }
 // フレーズ→HTML(アイコン+ラベル)。日別サマリ用。
+// 単一天気の日の表示フレーズを作る。code=2("晴れ時々曇り")だけは複合ラベルなので
+// 晴れ/曇り2アイコンに分解する(他コードはWMOラベル1つ+カテゴリアイコン1つで足りる)。
+function singleCodePhrase(code){
+  if(code===2)return[{label:"晴れ",icon:"wx-sun"},{conn:"時々"},{label:"曇り",icon:"wx-cloud"}];
+  return[{label:wcode(code),icon:wbaseIcon(code)}];
+}
 const wxPhraseHtml=ph=>!ph||!ph.length?"-":ph.map(s=>s.conn!==undefined
   ?`<span class="wxconn">${s.conn}</span>`
   :(s.icon?`<svg class="wxico" aria-hidden="true"><use href="#${s.icon}"/></svg>`:"")+esc(s.label)).join("");

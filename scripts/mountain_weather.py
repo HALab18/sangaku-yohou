@@ -150,6 +150,14 @@ def _wbase_icon(code):
     return WBASE[_wcat(code)][1] if _wcat(code) in WBASE else None
 
 
+def _single_code_phrase(code):
+    """単一天気の日の表示フレーズ。code=2("晴れ時々曇り")だけは複合ラベルなので
+    晴れ/曇り2アイコンに分解する(他コードはWMOラベル1つ+カテゴリアイコン1つで足りる)。"""
+    if code == 2:
+        return [{"label": "晴れ", "icon": "wx-sun"}, {"conn": "時々"}, {"label": "曇り", "icon": "wx-cloud"}]
+    return [{"label": wcode(code), "icon": _wbase_icon(code)}]
+
+
 def _dominant(sub):
     """最多ラベル(同数は重症度が高い方)。sub=[{'label','sev'}, ...]。空なら None。"""
     cnt, sv = {}, {}
@@ -239,7 +247,7 @@ def summarize_daily_weather(times, codes):
             _add_precip_notes(win, rep_cat, notes, {e["hour"] for e in overrides}, phrase_cats)
             # 単一天気の日は従来の詳細ラベル(快晴/弱/強等)を維持しアイコンだけ付ける
             if phrase and len(phrase) == 1:
-                phrase = [{"label": wcode(rep), "icon": _wbase_icon(rep)}]
+                phrase = _single_code_phrase(rep)
             result[date] = {"code": rep, "notes": notes, "phrase": phrase}
             continue
         # 第2層: 日中の時間帯多数決(同数なら重症度が高い方)
@@ -266,7 +274,7 @@ def summarize_daily_weather(times, codes):
         _add_precip_notes(win, rep_cat, notes, set(), phrase_cats)
         # 単一天気の日は従来の詳細ラベル(快晴/晴れ時々曇り/弱/強等)を維持しアイコンだけ付ける
         if phrase and len(phrase) == 1:
-            phrase = [{"label": wcode(rep_code), "icon": _wbase_icon(rep_code)}]
+            phrase = _single_code_phrase(rep_code)
         result[date] = {"code": rep_code, "notes": notes, "phrase": phrase}
     return result
 
