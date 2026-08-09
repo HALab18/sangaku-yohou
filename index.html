@@ -987,9 +987,9 @@ const AGREE_KEY="sangaku-yohou-agreed-v1";
 // 定数3つ(VER/SALT/HASH)は scripts/gen_auth_hash.py の出力で年1回差し替える。
 // VERを変えると全端末のlocalStorageの認証済み印が無効になり、再入力が求められる。
 const AUTH_KEY="peakweather-auth",
-      AUTH_VER="2026",
-      AUTH_SALT="87d8b957337ae34b42890f9b2eed01d4",
-      AUTH_HASH="22c737a5964139051ec51e16cd47b2808d3a14ccfa1c5dea0440ef7bb8db7c39",
+      AUTH_VER="2026b",
+      AUTH_SALT="efa8213b829e9990e42728e270cf62a8",
+      AUTH_HASH="8dc5e8b38693c960e6e58eee86e0f22976f2b729cc5af3e21e726c873e019519",
       AUTH_ITER=300000;
 const isAuthed=()=>localStorage.getItem(AUTH_KEY)===AUTH_VER;
 async function hashAuthCode(code){
